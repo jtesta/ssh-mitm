@@ -78,6 +78,7 @@ This is the first release of this tool.  While it is very useful as-is, there ar
 ## Sample Results
 
 Upon success, */var/log/auth.log* will have lines that log the password, like this:
+
     May 16 23:14:01 showmeyourmoves sshd[16798]: INTERCEPTED PASSWORD: hostname: [10.199.30.x]; username: [jdog]; password: [supercalifragilistic] [preauth]
 
 Furthermore, the victim's entire SSH session can be found in */home/bogus/session_\*.txt*:
