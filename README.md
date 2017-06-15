@@ -1,4 +1,7 @@
-# SSH MITM v1.0
+# SSH MITM v1.1
+
+Author: [Joe Testa](http://www.positronsecurity.com/about-us/)
+
 
 ## Overview
 
@@ -6,7 +9,13 @@ This penetration testing tool allows an auditor to intercept SSH connections.  A
 
 Of course, the victim's SSH client will complain that the server's key has changed.  But because 99.99999% of the time this is caused by a legitimate action (OS re-install, configuration change, etc), many/most users will disregard the warning and continue on.
 
-**NOTE:** Only run the modified *sshd* in a VM or container!  Ad-hoc edits were made to the OpenSSH sources in critical regions, with no regard to their security implications.  Its not hard to imagine these edits introduce serious vulnerabilities.  Until the dependency on root privileges is removed, be sure to only run this code on throw-away VMs/containers.
+**NOTE:** Only run the modified *sshd* in a VM or container!  Ad-hoc edits were made to the OpenSSH sources in critical regions, with no regard to their security implications.  Its not hard to imagine these edits introduce serious vulnerabilities.
+
+
+## Change Log
+
+* v1.0: May 16, 2017: Initial revision.
+* v1.1: ???, 2017: Removed root privilege dependencies.
 
 
 ## To Do
@@ -15,7 +24,6 @@ This is the first release of this tool.  While it is very useful as-is, there ar
 
 * Support SFTP MITM'ing.
 * Add port forwarding support.
-* Remove dependency on root privileges.
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
 
 
