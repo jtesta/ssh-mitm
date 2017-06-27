@@ -113,6 +113,11 @@ EOF
 }
 
 
+if [[ `id -u` != 0 ]]; then
+    echo "Error: this script must be run as root."
+    exit -1
+fi
+
 install_prereqs
 get_openssh
 compile_openssh
