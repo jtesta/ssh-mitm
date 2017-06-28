@@ -9,9 +9,9 @@ openssl_dir=''
 # Installs prerequisites.
 function install_prereqs() {
     echo -e "Installing prerequisites...\n"
-    apt -y install libssl-dev zlib1g-dev build-essential
+    apt -y install zlib1g-dev build-essential
     if [[ $? != 0 ]]; then
-        echo -e "Failed to install prerequisites.  Failed: apt -y install libssl-dev zlib1g-dev build-essential"
+        echo -e "Failed to install prerequisites.  Failed: apt -y install zlib1g-dev build-essential"
         exit -1
     fi
 
@@ -19,7 +19,15 @@ function install_prereqs() {
     grep Kali /etc/lsb-release > /dev/null
     if [[ $? == 0 ]]; then
         if [[ (! -d $openssl_dir) || (! -f $openssl_dir/lib/libssl.a) ]]; then
-            echo -e "Kali Linux detected, but the path to OpenSSL's compiled sources not found.  Compile the latest version of OpenSSL v1.0.2 and re-run this script with OpenSSL's directory as an argument.\n\nExample:\n\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz.asc\ngpg --recv-key 8657abb260f056b1e5190839d9c4d26d0e604491\ngpg --verify openssl-1.0.2l.tar.gz.asc openssl-1.0.2l.tar.gz\ntar xvf openssl-1.0.2l.tar.gz; pushd openssl-1.0.2l; ./config && make -j 10 && make install; popd\n./install.sh /usr/local/ssl/"
+            echo -e "\nError: Kali Linux detected, but the path to OpenSSL's compiled sources not found.  Compile the latest version of OpenSSL v1.0.2 and re-run this script with OpenSSL's directory as an argument.\n\nExample:\n\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz.asc\nsudo apt install dirmngr; gpg --recv-key 8657abb260f056b1e5190839d9c4d26d0e604491\ngpg --verify openssl-1.0.2l.tar.gz.asc openssl-1.0.2l.tar.gz\ntar xvf openssl-1.0.2l.tar.gz; pushd openssl-1.0.2l; ./config && make -j 10 && make install; popd\n./install.sh /usr/local/ssl/"
+            exit -1
+        fi
+
+    # libssl-dev not needed on Kali Linux.
+    else
+        apt -y install libssl-dev
+        if [[ $? != 0 ]]; then
+            echo -e "Failed to install prerequisites.  Failed: apt -y install libssl-dev"
             exit -1
         fi
     fi
