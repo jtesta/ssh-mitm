@@ -9,27 +9,24 @@ openssl_dir=''
 # Installs prerequisites.
 function install_prereqs() {
     echo -e "Installing prerequisites...\n"
-    apt -y install zlib1g-dev build-essential
-    if [[ $? != 0 ]]; then
-        echo -e "Failed to install prerequisites.  Failed: apt -y install zlib1g-dev build-essential"
-        exit -1
-    fi
 
-    # Check if we are in Kali Linux.
+    declare -a packages
+    packages=(zlib1g-dev build-essential)
+
+    # Check if we are in Kali Linux.  Kali ships with OpenSSL v1.1.0, which
+    # OpenSSH doesn't support.  So we need to explicitly install the v1.0.2
+    # dev package.
     grep Kali /etc/lsb-release > /dev/null
     if [[ $? == 0 ]]; then
-        if [[ (! -d $openssl_dir) || (! -f $openssl_dir/lib/libssl.a) ]]; then
-            echo -e "\nError: Kali Linux detected, but the path to OpenSSL's compiled sources not found.  Compile the latest version of OpenSSL v1.0.2 and re-run this script with OpenSSL's directory as an argument.\n\nExample:\n\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz\nwget https://www.openssl.org/source/openssl-1.0.2l.tar.gz.asc\nsudo apt install dirmngr; gpg --recv-key 8657abb260f056b1e5190839d9c4d26d0e604491\ngpg --verify openssl-1.0.2l.tar.gz.asc openssl-1.0.2l.tar.gz\ntar xvf openssl-1.0.2l.tar.gz; pushd openssl-1.0.2l; ./config && make -j 10 && make install; popd\n./install.sh /usr/local/ssl/"
-            exit -1
-        fi
-
-    # libssl-dev not needed on Kali Linux.
+        packages+=(libssl1.0-dev)
     else
-        apt -y install libssl-dev
-        if [[ $? != 0 ]]; then
-            echo -e "Failed to install prerequisites.  Failed: apt -y install libssl-dev"
-            exit -1
-        fi
+        packages+=(libssl-dev)
+    fi
+
+    apt -y install ${packages[@]}
+    if [[ $? != 0 ]]; then
+        echo -e "Failed to install prerequisites.  Failed: apt -y install ${packages[@]}"
+        exit -1
     fi
 
     return 1
