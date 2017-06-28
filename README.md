@@ -1,6 +1,6 @@
 # SSH MITM v1.1
 
-Author: [Joe Testa](http://www.positronsecurity.com/about-us/)
+Author: [Joe Testa](http://www.positronsecurity.com/about-us/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
 
 ## Overview
@@ -15,7 +15,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 ## Change Log
 
 * v1.0: May 16, 2017: Initial revision.
-* v1.1: ???, 2017: Removed root privilege dependencies.
+* v1.1: ???, 2017: Removed root privilege dependencies, added Kali Linux support.
 
 
 ## To Do
@@ -45,8 +45,8 @@ As root, run the *install.sh* script.  This will install prerequisites from the 
 
 3.) Allow connections to *sshd_mitm* and re-route forwarded SSH connections:
 
-    sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-    sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 22
+    sudo iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222
 
 4.) ARP spoof a target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
@@ -96,7 +96,7 @@ Note that the characters in the user's commands appear twice in the file because
 
 In *lol.h* are two defines: *DEBUG_HOST* and *DEBUG_PORT*.  Enable them and set the hostname to a test server.  Now you can connect to *sshd_mitm* directly without using ARP spoofing in order to test your changes, e.g.:
 
-    ssh valid_user_on_debug_host@localhost
+    ssh -p 2222 valid_user_on_debug_host@localhost
 
 To create a new patch, use these commands:
 
