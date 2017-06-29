@@ -82,37 +82,50 @@ def signal_handler(signum, frame):
             # In this case, just wait for it to terminate.
             pass
 
-    # Wait up to 30 seconds for tshark to terminate, then print its return code
+    # Wait up to 20 seconds for tshark to terminate, then print its return code
     # to the debug log.
-    try:
-        if tshark_proc is not None:
-            retcode = tshark_proc.wait(30)
+    if tshark_proc is not None:
+        try:
+            retcode = tshark_proc.wait(20)
             tshark_proc = None
             d('tshark terminated with return code %d' % retcode)
-    except subprocess.TimeoutExpired as e:
-        print('WARNING: tshark did not terminate after 30 seconds!')
-        pass
+        except subprocess.TimeoutExpired as e:
+            print('WARNING: tshark did not terminate after 20 seconds!  Sending SIGKILL...')
+            pass
 
-    # Wait up to 10 seconds for ettercap to quit after telling it to.
+    # tshark survived more than 20 seconds after a SIGTERM, so now send it
+    # SIGKILL and wait up to 10 more seconds.
+    if tshark_proc is not None:
+        try:
+            tshark_proc.kill()
+            retcode = tshark_proc.wait(10)
+            tshark_proc = None
+            d('After SIGKILL, tshark terminated with return code %d' % retcode)
+        except subprocess.TimeoutExpired as e:
+            print('ERROR: tshark did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % tshark_proc.pid)
+            pass
+
+    # Wait up to 20 seconds for ettercap to quit after telling it to.
     if ettercap_proc is not None:
         try:
-            retcode = ettercap_proc.wait(10)
+            retcode = ettercap_proc.wait(20)
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
         except subprocess.TimeoutExpired as e:
             pass
 
-        # If ettercap didn't voluntarily quit, its time to kill it.
-        if ettercap_proc is not None:
-            d('ettercap did not exit gracefully after requesting it to quit.  Now sending it SIGKILL...')
-            ettercap_proc.kill()
-            try:
-                retcode = ettercap_proc.wait(20)
-                ettercap_proc = None
-                d('ettercap terminated with return code %d' % retcode)
-            except subprocess.TimeoutExpired as e:
-                print('WARNING: ettercap did not terminate after 30 seconds!')
-                pass
+    # ettercap survived more than 20 seconds after a SIGTERM, so now send it
+    # SIGKILL and wait up to 10 more seconds.
+    if ettercap_proc is not None:
+        d('WARNING: ettercap did not exit gracefully after requesting it to quit.  Now sending it SIGKILL...')
+        ettercap_proc.kill()
+        try:
+            retcode = ettercap_proc.wait(10)
+            ettercap_proc = None
+            d('ettercap terminated with return code %d' % retcode)
+        except subprocess.TimeoutExpired as e:
+            print('ERROR: ettercap did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % ettercap_proc.pid)
+            pass
 
     # If IP forwarding was off before this script was launched, disable it
     # before terminating.
@@ -126,18 +139,16 @@ def signal_handler(signum, frame):
     if len(total_local_clients) > 0:
         print("\nTotal local clients:")
         for tup in total_local_clients:
-           print('  * %s -> %s:22' % (tup[0], tup[1]))
+            print('  * %s -> %s:22' % (tup[0], tup[1]))
         print()
     else:
         print('No local clients found.  :(')
 
     if len(total_local_servers) > 0:
-       print("\nTotal local servers:")
-       for tup in total_local_servers:
-           print('  * %s -> %s:22' % (tup[1], tup[0]))
-       print()
-    else:
-        print('No local servers found.')
+        print("\nTotal local servers:")
+        for tup in total_local_servers:
+            print('  * %s -> %s:22' % (tup[1], tup[0]))
+        print()
 
     exit(0)
 
