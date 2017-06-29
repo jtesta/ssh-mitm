@@ -24,6 +24,7 @@ The following list tracks areas to improve:
 
 * Support SFTP MITM'ing.
 * Add port forwarding support.
+* Regex substitute the output of *ssh-keygen* when a user tries to check the host key hash. >:]
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
 
 
@@ -52,7 +53,7 @@ Example:
       * 10.11.12.70 -> 174.129.77.155:22
       * 10.11.12.43 -> 10.11.99.2:22
 
-The above output shows that two devices on the LAN have created SSH connections (10.11.12.43 and 10.11.12.70); these can be targeted for a man-in-the-middle attack.  Note, however, that in order to potentially intercept credentials, you'll have to wait for them to initiate a new connection.  Impatient pentesters may opt to forcefully close existing SSH connections, to prompt users to create new ones immediately...
+The above output shows that two devices on the LAN have created SSH connections (10.11.12.43 and 10.11.12.70); these can be targeted for a man-in-the-middle attack.  Note, however, that in order to potentially intercept credentials, you'll have to wait for them to initiate new connections.  Impatient pentesters may opt to forcefully close existing SSH sessions, prompting users to create new ones immediately...
 
 
 ## Running The Attack
