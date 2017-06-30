@@ -163,7 +163,11 @@ function setup_environment {
 #!/bin/bash
 /home/ssh-mitm/bin/sshd_mitm -f /home/ssh-mitm/etc/sshd_config
 if [[ $? == 0 ]]; then
-    echo "sshd_mitm is running.  Now update the PREROUTING table, begin ARP spoofing, and credentials should start rolling into /var/log/auth.log.  See README.md for more information."
+    echo "sshd_mitm is now running."
+    exit 0
+else
+    echo -e "\n\nERROR: sshd_mitm failed to start!\n"
+    exit -1
 fi
 EOF
     chmod 0755 ~ssh-mitm/run.sh
