@@ -51,6 +51,10 @@ iptables -nL INPUT | egrep "ACCEPT +tcp +-- +0\.0\.0\.0/0 +0\.0\.0\.0/0 +tcp dpt
 if [[ $? == 0 ]]; then
     echo "Executing: iptables -D INPUT -p tcp --dport 2222 -j ACCEPT"
     iptables -D INPUT -p tcp --dport 2222 -j ACCEPT
+    if [[ $? != 0 ]]; then
+        echo "ERROR: failed to remove iptables rule!"
+        exit -1
+    fi
 fi
 
 # Check if the PREROUTING table has a REDIRECT for port 22 to 2222.  If so,
@@ -59,7 +63,11 @@ iptables -t nat -nL PREROUTING | egrep "REDIRECT +tcp +-- +0\.0\.0\.0/0 +0\.0\.0
 if [[ $? == 0 ]]; then
     echo "Executing: iptables -t nat -D PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222"
     iptables -t nat -D PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222
+    if [[ $? != 0 ]]; then
+        echo "ERROR: failed to remove iptables rule!"
+        exit -1
+    fi
 fi
 
-echo -e "\nDone!\n"
+echo -e "\nSuccessfully stopped sshd_mitm daemon and disabled forwarding rules.\n"
 exit 0
