@@ -41,9 +41,9 @@ function install_prereqs {
         packages+=(libssl-dev)
     fi
 
-    apt -y install ${packages[@]}
+    apt install -y ${packages[@]}
     if [[ $? != 0 ]]; then
-        echo -e "Failed to install prerequisites.  Failed: apt -y install ${packages[@]}"
+        echo -e "Failed to install prerequisites.  Failed: apt install -y ${packages[@]}"
         exit -1
     fi
 
