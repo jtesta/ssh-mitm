@@ -843,9 +843,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +
 +	lol = (Lol *)calloc(1, sizeof(Lol));
 +
-+        /* Terminate if sshd_mitm is running as root. */
-+        if ((getuid() == 0) || (getgid() == 0)) {
-+            fprintf(stderr, "Error: sshd_mitm must be run under a non-privileged account and not root!\n");
++        /* Terminate if sshd_mitm is running in a privileged account. */
++        if ((getuid() < 500) || (getgid() < 500) || (geteuid() < 500) || (getegid() < 500)) {
++            fprintf(stderr, "Error: sshd_mitm must be run under a non-privileged account!  UID and GID must be >= 500.\n");
 +            exit(-1);
 +        }
  
