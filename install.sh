@@ -157,5 +157,5 @@ get_openssh
 compile_openssh
 setup_environment
 
-echo -e "\n\nDone!  You can now execute sshd_mitm with:  su - ssh-mitm -c \"./run.sh\"\n\n"
+echo -e "\n\nDone!  The next step is to use JoesAwesomeSSHMITMVictimFinder.py to find target IPs, then execute run.sh and ARP spoof.\"\n\n"
 exit 0
