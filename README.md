@@ -15,7 +15,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 ## Change Log
 
 * v1.0: May 16, 2017: Initial revision.
-* v1.1: ???, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added JoesAwesomeSSHMITMVictimFinder.py script to find potential targets on a LAN.
+* v1.1: ???, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added *JoesAwesomeSSHMITMVictimFinder.py* script to find potential targets on a LAN.
 
 
 ## To Do
@@ -119,7 +119,7 @@ Furthermore, the victim's entire SSH session can be found in */home/ssh-mitm/ses
     jtesta@magicbox's password: ROFLC0PTER!!1juan
 
 
-Note that the characters in the user's commands appear twice in the file because the input from the user is recorded, as well as the output from the shell (which echoes characters back).  Observe that when programs like sudo and ssh temporarily disable echoing in order to read a password, duplicate characters are not logged.
+Note that the characters in the user's commands appear twice in the file because the input from the user is recorded, as well as the output from the shell (which echoes characters back).  Observe that when programs like *sudo* and *ssh* temporarily disable echoing in order to read a password, duplicate characters are not logged.
 
 
 ## Developer Documentation
