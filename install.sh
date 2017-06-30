@@ -97,6 +97,15 @@ function get_openssh {
         rm -f $openssh_sources
         exit -1
     fi
+
+    # Check GPG's return value.  0 denotes a valid signature, and 1 is returned
+    # on invalid signatures.
+    if [[ $? != 0 ]]; then
+        echo -e "\n\nError: OpenSSH signature invalid!  Verification returned code: $?\n\nTerminating."
+        rm -f $openssh_sources
+        exit -1
+    fi
+
     echo -e "Signature on OpenSSH sources verified.\n"
 
     local openssh_checksum_actual=`sha256sum $openssh_sources`
@@ -130,7 +139,7 @@ function compile_openssh {
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
 
-    ./configure --with-sandbox=no --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $openssl_flag
+    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $openssl_flag
     make -j `nproc --all`
     popd > /dev/null
 }
