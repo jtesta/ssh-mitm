@@ -31,14 +31,14 @@ The following list tracks areas to improve:
 
 ## Initial Setup
 
-As root, run the *install.sh* script.  This will install prerequisites from the repositories, download the OpenSSH archive, verify its signature, compile it, and initialize a non-privileged environment to execute from.
+As root, run the *install.sh* script.  This will install prerequisites from the repositories, download the OpenSSH archive, verify its signature, compile it, and initialize a non-privileged environment to execute within.
 
 
 ## Finding Targets
 
 The *JoesAwesomeSSHMITMVictimFinder.py* script makes finding targets on a LAN very easy.  It will ARP spoof a block of IPs and sniff for SSH traffic for a short period of time before moving on to the next block.  Any ongoing SSH connections originating from devices on the LAN are reported.
 
-By default, *JoesAwesomeSSHMITMVictimFinder.py* will ARP spoof and sniff only 5 IPs at a time for 20 seconds before moving onto the next block.  These parameters can be tuned, though a trade-off exists: the more IPs that are spoofed at a time, the greater the chance you will catch an ongoing SSH connection, but also the greater the strain you will put on your puny network interface.  Under too high of a load, your interface will start dropping frames, causing a denial-of-service and greatly raising suspicions (this is bad).  The defaults shouldn't cause problems in most cases, though it'll take longer to find targets.  The block size can be safely raised on low-utilization networks.
+By default, *JoesAwesomeSSHMITMVictimFinder.py* will ARP spoof and sniff only 5 IPs at a time for 20 seconds before moving onto the next block of 5.  These parameters can be tuned, though a trade-off exists: the more IPs that are spoofed at a time, the greater the chance you will catch an ongoing SSH connection, but also the greater the strain you will put on your puny network interface.  Under too high of a load, your interface will start dropping frames, causing a denial-of-service and greatly raising suspicions (this is bad).  The defaults shouldn't cause problems in most cases, though it'll take longer to find targets.  The block size can be safely raised on low-utilization networks.
 
 Example:
 
@@ -59,7 +59,7 @@ The above output shows that two devices on the LAN have created SSH connections 
 
 ## Running The Attack
 
-1.) Once you've completed the initial setup and found a list of potential victims (see above), execute *run.sh* as root.  This will execute *sshd_mitm*, enable IP forwarding, and set up SSH packet interception through *iptables*.
+1.) Once you've completed the initial setup and found a list of potential victims (see above), execute *run.sh* as root.  This will start *sshd_mitm*, enable IP forwarding, and set up SSH packet interception through *iptables*.
 
 2.) ARP spoof the target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
