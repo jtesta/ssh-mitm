@@ -15,7 +15,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 ## Change Log
 
 * v1.0: May 16, 2017: Initial revision.
-* v1.1: ???, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added *JoesAwesomeSSHMITMVictimFinder.py* script to find potential targets on a LAN.
+* v1.1: July 6, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added *JoesAwesomeSSHMITMVictimFinder.py* script to find potential targets on a LAN.
 
 
 ## To Do
