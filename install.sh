@@ -44,7 +44,7 @@ function install_prereqs {
     echo -e "Installing prerequisites...\n"
 
     declare -a packages
-    packages=(zlib1g-dev build-essential)
+    packages=(autoconf build-essential zlib1g-dev)
 
     # Check if we are in Kali Linux.  Kali ships with OpenSSL v1.1.0, which
     # OpenSSH doesn't support.  So we need to explicitly install the v1.0.2
@@ -136,6 +136,9 @@ function compile_openssh {
         echo "Failed to patch sources!: patch returned $?"
         exit -1
     fi
+
+    echo -e "\nDone.  Running autoconf...\n"
+    autoconf
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
 

