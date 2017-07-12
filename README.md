@@ -1,4 +1,4 @@
-# SSH MITM v1.1
+# SSH MITM v1.2-dev
 
 Author: [Joe Testa](http://www.positronsecurity.com/about-us/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
@@ -118,4 +118,4 @@ In *lol.h* are two defines: *DEBUG_HOST* and *DEBUG_PORT*.  Enable them and set 
 To create a new patch, use these commands:
 
     pushd openssh-7.5p1-mitm/; make clean; popd
-    diff -ru --new-file -x '*~' -x 'config.*' -x Makefile.in -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh openssh-7.5p1 openssh-7.5p1-mitm/ > openssh-7.5p1-mitm.patch
+    diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1 openssh-7.5p1-mitm/ > openssh-7.5p1-mitm.patch
