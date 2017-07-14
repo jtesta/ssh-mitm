@@ -34,13 +34,7 @@ if [[ $? == 0 ]]; then
 fi
 
 # Kill all processes belonging to the ssh-mitm user.
-proc_line=`ps aux | egrep '^ssh-mitm'`
-while [[ $? == 0 ]]; do
-    pid=`echo $proc_line | awk '{print $2}'`
-    echo "Killing ssh-mitm account PID: $pid"
-    kill -9 $pid
-    proc_line=`ps aux | egrep '^ssh-mitm'`
-done
+killall -u ssh-mitm 2> /dev/null
 
 echo "Disabling IP forwarding in the kernel..."
 echo 0 > /proc/sys/net/ipv4/ip_forward
