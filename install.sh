@@ -157,24 +157,48 @@ function compile_openssh {
     ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm
     make -j `nproc --all`
     popd > /dev/null
+
+    # Ensure that sshd, ssh, and sftp-server was built.
+    if [[ (! -f $openssh_source_dir/sshd) || (! -f $openssh_source_dir/ssh) || (! -f $openssh_source_dir/sftp-server) ]]; then
+        echo -e "\nFailed to build ssh, sshd, and/or sftp-server.  Terminating."
+        exit -1
+    fi
 }
 
 
 # Creates the ssh-mitm user account, and sets up its environment.
 function setup_environment {
     echo -e "\nCreating ssh-mitm user, and setting up its environment...\n"
+
+    # Create the ssh-mitm user and set its home directory to mode 0700.  Create
+    # "bin" and "etc" subdirectories to hold the executables and config file,
+    # respectively.
     useradd -m -s /bin/bash ssh-mitm
     chmod 0700 ~ssh-mitm
     mkdir -m 0755 ~ssh-mitm/{bin,etc}
+
+    # Copy the config file to the "etc" directory.
     cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
-    cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm || echo "Error: sshd_mitm was not correctly built!"; exit -1
-    cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh || echo "Error: ssh was not correctly built!"; exit -1
-    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server || echo "Error: sftp-server was not correctly built!"; exit -1
-    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
+
+    # Copy the executables to the "bin" directory.
+    cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm
+    cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh
+    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server
+
+    # Strip the debugging symbols out of the executables.
+    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh ~ssh-mitm/bin/sftp-server
+
+    # Create a 4096-bit RSA host key and ED25519 host key.
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
     ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''
+
+    # Create the "empty" directory to make the privsep function happy.
     mkdir -m 0700 ~ssh-mitm/empty
+
+    # Set ownership on the "empty" directory and SSH host keys.
     chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/etc/ssh_host_*key*
+
+    # Create the "run.sh" script, then set its permissions.
     cat > ~ssh-mitm/run.sh <<EOF
 #!/bin/bash
 /home/ssh-mitm/bin/sshd_mitm -f /home/ssh-mitm/etc/sshd_config
