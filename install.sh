@@ -142,7 +142,7 @@ function compile_openssh {
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
 
-    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $openssl_flag
+    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm
     make -j `nproc --all`
     popd > /dev/null
 }
