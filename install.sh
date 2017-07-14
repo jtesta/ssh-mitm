@@ -29,10 +29,21 @@ function reset_env {
     # Make sure no sshd_mitm is running and the user is logged out.
     killall -u ssh-mitm 2> /dev/null
 
-    # Delete the ssh-mitm user, if it exists.
+    # Check if the ssh-mitm user exists.
     id ssh-mitm > /dev/null 2> /dev/null
     if [[ $? == 0 ]]; then
-        userdel -f -r ssh-mitm 2> /dev/null
+
+	# The user exists.  If this script was run with the "--force" argument,
+        # then we will delete the user.
+        if [[ $1 == '--force' ]]; then
+            userdel -f -r ssh-mitm 2> /dev/null
+
+        # There could be saved sessions from an old version of SSH MITM that
+        # we shouldn't destroy automatically.
+        else
+            echo "It appears that the ssh-mitm user already exists.  Make backups of any saved sessions in /home/ssh-mitm/, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
+            exit -1
+        fi
     fi
 
     return 1
@@ -48,10 +59,11 @@ function install_prereqs {
 
     # Check if we are in Kali Linux.  Kali ships with OpenSSL v1.1.0, which
     # OpenSSH doesn't support.  So we need to explicitly install the v1.0.2
-    # dev package.
+    # dev package.  Also, a bare-bones Kali installation may not have the
+    # killall tool, so install that in the psmisc package.
     grep Kali /etc/lsb-release > /dev/null
     if [[ $? == 0 ]]; then
-        packages+=(libssl1.0-dev)
+        packages+=(libssl1.0-dev psmisc)
     else
         packages+=(libssl-dev)
     fi
@@ -157,6 +169,7 @@ function setup_environment {
     cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
     cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm || (echo "Error: sshd_mitm was not correctly built!"; exit -1)
     cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh || (echo "Error: ssh was not correctly built!"; exit -1)
+    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server || (echo "Error: sftp-server was not correctly built!"; exit -1)
     strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
     ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''
@@ -182,8 +195,8 @@ if [[ `id -u` != 0 ]]; then
     exit -1
 fi
 
-reset_env
 install_prereqs
+reset_env $1
 get_openssh
 compile_openssh
 setup_environment
