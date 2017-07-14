@@ -2760,7 +2760,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +}
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server-main.c openssh-7.5p1-mitm/sftp-server-main.c
 --- openssh-7.5p1/sftp-server-main.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-server-main.c	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sftp-server-main.c	2017-07-14 16:36:42.602076807 -0400
 @@ -21,6 +21,7 @@
  #include <pwd.h>
  #include <stdarg.h>
@@ -2769,11 +2769,12 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #include <unistd.h>
  
  #include "log.h"
-@@ -38,6 +39,12 @@
+@@ -38,6 +39,13 @@
  main(int argc, char **argv)
  {
  	struct passwd *user_pw;
 +	char **new_argv;
++	int i;
 +
 +	if (argc < 4) {
 +		fprintf(stderr, "Error: at least four arguments necessary.\n");
@@ -2782,7 +2783,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  	ssh_malloc_init();	/* must be called before any mallocs */
  	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
-@@ -49,5 +56,11 @@
+@@ -49,5 +57,11 @@
  		return 1;
  	}
  
@@ -2790,7 +2791,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +	new_argv = calloc(argc - 4, sizeof(char *));
 +
 +	new_argv[0] = strdup(argv[0]);
-+	for (int i = 1; i < argc - 4; i++)
++	for (i = 1; i < argc - 4; i++)
 +		new_argv[i] = strdup(argv[i + 4]);
 +
 +	return (sftp_server_main(argc - 4, new_argv, user_pw, argv[1], (unsigned short)atoi(argv[2]), argv[3], argv[4]));
