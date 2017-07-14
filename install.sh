@@ -167,9 +167,9 @@ function setup_environment {
     chmod 0700 ~ssh-mitm
     mkdir -m 0755 ~ssh-mitm/{bin,etc}
     cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
-    cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm || (echo "Error: sshd_mitm was not correctly built!"; exit -1)
-    cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh || (echo "Error: ssh was not correctly built!"; exit -1)
-    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server || (echo "Error: sftp-server was not correctly built!"; exit -1)
+    cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm || echo "Error: sshd_mitm was not correctly built!"; exit -1
+    cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh || echo "Error: ssh was not correctly built!"; exit -1
+    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server || echo "Error: sftp-server was not correctly built!"; exit -1
     strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
     ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''
