@@ -176,6 +176,8 @@ function setup_environment {
     useradd -m -s /bin/bash ssh-mitm
     chmod 0700 ~ssh-mitm
     mkdir -m 0755 ~ssh-mitm/{bin,etc}
+    mkdir -m 0700 ~ssh-mitm/tmp
+    chown ssh-mitm:ssh-mitm ~ssh-mitm/tmp
 
     # Copy the config file to the "etc" directory.
     cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/

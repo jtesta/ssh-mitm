@@ -22,10 +22,9 @@ Of course, the victim's SSH client will complain that the server's key has chang
 
 The following list tracks areas to improve:
 
-* Support SFTP MITM'ing.
+* Log SFTP sessions.
 * Print hostname, username, and password at the top of session logs.
 * Add port forwarding support.
-* Regex substitute the output of *ssh-keygen* when a user tries to check the host key hash. >:]
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
 
 
