@@ -3,3 +3,4 @@ RELEASE_KEY.asc
 openssh-7.5p1-mitm/
 openssh-7.5p1/
 openssh-7.5p1.tar.gz*
+uncommitted_changes.patch
