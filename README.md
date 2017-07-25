@@ -58,7 +58,7 @@ The above output shows that two devices on the LAN have created SSH connections 
 
 ## Running The Attack
 
-1.) Once you've completed the initial setup and found a list of potential victims (see above), execute *run.sh* as root.  This will start *sshd_mitm*, enable IP forwarding, and set up SSH packet interception through *iptables*.
+1.) Once you've completed the initial setup and found a list of potential victims (see above), execute *start.sh* as root.  This will start *sshd_mitm*, enable IP forwarding, and set up SSH packet interception through *iptables*.
 
 2.) ARP spoof the target(s) (**Protip:** do NOT spoof all the things!  Your puny network interface won't likely be able to handle an entire network's traffic all at once.  Only spoof a couple IPs at a time):
 
