@@ -108,7 +108,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		expire_checked = 1;
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/channels.c openssh-7.5p1-mitm/channels.c
 --- openssh-7.5p1/channels.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/channels.c	2017-07-24 21:33:12.818139224 -0400
++++ openssh-7.5p1-mitm/channels.c	2017-07-24 22:19:40.807797734 -0400
 @@ -82,6 +82,7 @@
  #include "key.h"
  #include "authfd.h"
@@ -185,7 +185,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +		 * our fingerprints.  >:] */
 +		output = replace_fingerprints(c, buf, len, &output_len, &free_result);
 +		handle_overlap(c, output, output_len, &real_output_len);
-+		log_input(c->log_fd, output, real_output_len);
++		log_output(c->log_fd, output, real_output_len);
  		if (c->input_filter != NULL) {
 -			if (c->input_filter(c, buf, len) == -1) {
 +			if (c->input_filter(c, output, real_output_len) == -1) {
@@ -207,7 +207,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  			dlen = MIN(dlen, 8*1024);
  #endif
  
-+		log_output(c->log_fd, buf, dlen);
++		log_input(c->log_fd, buf, dlen);
  		len = write(c->wfd, buf, dlen);
  		if (len < 0 &&
  		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
