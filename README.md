@@ -23,7 +23,6 @@ Of course, the victim's SSH client will complain that the server's key has chang
 The following list tracks areas to improve:
 
 * Log SFTP sessions.
-* Print hostname, username, and password at the top of session logs.
 * Add port forwarding support.
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
 
