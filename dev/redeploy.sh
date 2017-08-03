@@ -8,14 +8,13 @@ killall -u ssh-mitm
 pushd openssh-7.5p1-mitm
 if [[ $1 == 'clean' ]]; then
    make clean
-   make -j 10 > /dev/null
-else
-   make
 fi
+
+make -j 10 > /dev/null
 popd
 
 if [[ (! -f openssh-7.5p1-mitm/sshd) || (! -f openssh-7.5p1-mitm/ssh) || (! -f openssh-7.5p1-mitm/sftp-server) ]]; then
-   echo -e "\nCompile error."
+   echo -e "\n\t!!!! Compile error !!!!\n"
    exit -1
 fi
 
