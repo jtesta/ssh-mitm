@@ -8,9 +8,10 @@ killall -u ssh-mitm
 pushd openssh-7.5p1-mitm
 if [[ $1 == 'clean' ]]; then
    make clean
+   make -j 10 > /dev/null
+else
+   make -j 10
 fi
-
-make -j 10 > /dev/null
 popd
 
 if [[ (! -f openssh-7.5p1-mitm/sshd) || (! -f openssh-7.5p1-mitm/ssh) || (! -f openssh-7.5p1-mitm/sftp-server) ]]; then
