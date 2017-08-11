@@ -2498,7 +2498,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  void	sftp_server_cleanup_exit(int) __attribute__((noreturn));
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server.c openssh-7.5p1-mitm/sftp-server.c
 --- openssh-7.5p1/sftp-server.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-server.c	2017-08-11 11:17:36.502323233 -0400
++++ openssh-7.5p1-mitm/sftp-server.c	2017-08-11 19:45:11.934898021 -0400
 @@ -39,6 +39,7 @@
  #include <time.h>
  #include <unistd.h>
@@ -2516,7 +2516,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  /* Our verbosity */
  static LogLevel log_level = SYSLOG_LEVEL_ERROR;
-@@ -74,14 +77,12 @@
+@@ -74,15 +77,41 @@
  /* Requests that are allowed/denied */
  static char *request_whitelist, *request_blacklist;
  
@@ -2527,28 +2527,56 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 -	char *name;
 -	char *long_name;
 -	Attrib attrib;
--};
 +pid_t sshpid = -1;
 +volatile sig_atomic_t interrupted = 0;
 +int showprogress = 0;
 +extern struct sftp_conn *client_conn;
 +int session_log_fd = -1;      /* A descriptor to this session's log file. */
 +char *session_log_dir = NULL; /* The directory to store SFTP files in. */
++
++#define MITM_HANDLE_TYPE_FILE 0
++#define MITM_HANDLE_TYPE_DIR 1
++
++/* This maps a remote server's handle to a local file descriptor. */
++typedef struct MITMHandle MITMHandle;
++struct MITMHandle {
++  int in_use;          /* If 1, this slot is in use, otherwise it is unallocated.  */
++  u_int type;          /* One of the MITM_HANDLE_TYPE_ flags. */
++  char *handle_str;    /* The file handle on the remote server. */
++  size_t handle_len;   /* The number of bytes the above file handle is. */
++  int fd;              /* The local file descriptor. */
++  u_int32_t pflags;    /* The portable flags this file was opened with. */
++  char *original_path; /* The full path of the original file transferred. */
++  char *actual_path;   /* The relative path that the file was saved to locally. */
++  char *file_listing;  /* The file listing (if type == MITM_HANDLE_TYPE_DIR). */
++  size_t file_listing_size; /* The size of the file_listing buffer. */
+ };
  
++MITMHandle *mitm_handles = NULL; /* Our array of handles. */
++u_int num_mitm_handles = 0;  /* The current size of the mitm_handles array. */
++
++/* When mitm_handles runs out of free slots, it will grow by this many. */
++#define MITM_HANDLES_NEW_BLOCK 16
++
++/* The block size that the MITMHandle.file_listing buffer grows by. */
++#define MITM_HANDLES_FILE_LISTING_BLOCK 1024
++
++
  /* Packet handlers */
  static void process_open(u_int32_t id);
-@@ -109,6 +110,29 @@
+ static void process_close(u_int32_t id);
+@@ -109,6 +138,29 @@
  static void process_extended_fsync(u_int32_t id);
  static void process_extended(u_int32_t id);
  
 +struct sftp_conn *make_connection(char *host, unsigned short port, char *username, char *password_and_fingerprint_socket_name);
 +void mitm_init_log(char *log_filepath, char *log_dir);
 +void mitm_handle_close(const char *handle_str, size_t handle_len);
-+void mitm_handle_free(u_int index);
-+void mitm_handle_init(u_int index);
++void mitm_handle_free(MITMHandle *mh);
++void mitm_handle_init(MITMHandle *mh);
 +void mitm_handle_new(u_int type, char *original_name, u_int32_t pflags, const char *handle_str, size_t handle_len);
 +void mitm_handle_read_write(char *handle_str, size_t handle_len, u_int64_t offset, u_char *buf, size_t buf_len);
-+int mitm_handle_search(const char *handle_str, size_t handle_len, u_int *index);
++MITMHandle *mitm_handle_search(const char *handle_str, size_t handle_len);
 +void sftp_log(u_int status, const char *fmt, ...);
 +void sftp_log_no_filter(u_int status, const char *fmt, ...);
 +void _sftp_log(u_int status, u_int do_xss_filtering, char *buf, int buf_len);
@@ -2567,7 +2595,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  struct sftp_handler {
  	const char *name;	/* user-visible name for fine-grained perms */
  	const char *ext_name;	/* extended request name */
-@@ -179,6 +203,7 @@
+@@ -179,6 +231,7 @@
  	return 1;
  }
  
@@ -2575,7 +2603,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  static int
  errno_to_portable(int unixerrno)
  {
-@@ -236,7 +261,7 @@
+@@ -236,7 +289,7 @@
  		flags |= O_EXCL;
  	return flags;
  }
@@ -2584,7 +2612,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  static const char *
  string_from_portable(int pflags)
  {
-@@ -266,6 +291,7 @@
+@@ -266,6 +319,7 @@
  	return ret;
  }
  
@@ -2592,63 +2620,36 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  /* handle handles */
  
  typedef struct Handle Handle;
-@@ -289,6 +315,223 @@
+@@ -289,6 +343,195 @@
  u_int num_handles = 0;
  int first_unused_handle = -1;
  
 +
-+#define MITM_HANDLE_TYPE_FILE 0
-+#define MITM_HANDLE_TYPE_DIR 1
-+
-+/* This maps a remote server's handle to a local file descriptor. */
-+typedef struct MITMHandle MITMHandle;
-+struct MITMHandle {
-+  int in_use;          /* If 1, this slot is in use, otherwise it is unallocated.  */
-+  u_int type;          /* One of the MITM_HANDLE_TYPE_ flags. */
-+  char *handle_str;    /* The file handle on the remote server. */
-+  size_t handle_len;   /* The number of bytes the above file handle is. */
-+  int fd;              /* The local file descriptor. */
-+  u_int32_t pflags;    /* The portable flags this file was opened with. */
-+  char *original_path; /* The full path of the original file transferred. */
-+  char *actual_path;   /* The relative path that the file was saved to locally. */
-+  char *file_listing;  /* The file listing (if type == MITM_HANDLE_TYPE_DIR). */
-+  size_t file_listing_size; /* The size of the file_listing buffer. */
-+};
-+
-+MITMHandle *mitm_handles = NULL; /* Our array of handles. */
-+u_int num_mitm_handles = 0;  /* The current size of the mitm_handles array. */
-+
-+/* When mitm_handles runs out of free slots, it will grow by this many. */
-+#define MITM_HANDLES_NEW_BLOCK 16
-+
-+/* The block size that the MITMHandle.file_listing buffer grows by. */
-+#define MITM_HANDLES_FILE_LISTING_BLOCK 1024
-+
 +/* Frees a handle slot and re-initializes it. */
-+void mitm_handle_free(u_int index) {
-+  if (index < num_mitm_handles) {
-+    free(mitm_handles[index].handle_str);
-+    free(mitm_handles[index].original_path);
-+    free(mitm_handles[index].actual_path);
-+    free(mitm_handles[index].file_listing);
-+    mitm_handle_init(index);
++void mitm_handle_free(MITMHandle *mh) {
++  if (mh != NULL) {
++    free(mh->handle_str);
++    free(mh->original_path);
++    free(mh->actual_path);
++    free(mh->file_listing);
++    mitm_handle_init(mh);
 +  }
 +}
 +
 +/* Initializes a handle slot. Use mitm_handle_free() on previously-occupied
 + * slots. */
-+void mitm_handle_init(u_int index) {
-+  if (index < num_mitm_handles) {
-+    mitm_handles[index].in_use = 0;
-+    mitm_handles[index].type = 0;
-+    mitm_handles[index].handle_str = NULL;
-+    mitm_handles[index].handle_len = 0;
-+    mitm_handles[index].fd = -1;
-+    mitm_handles[index].pflags = 0;
-+    mitm_handles[index].original_path = NULL;
-+    mitm_handles[index].actual_path = NULL;
-+    mitm_handles[index].file_listing = NULL;
-+    mitm_handles[index].file_listing_size = 0;
++void mitm_handle_init(MITMHandle *mh) {
++  if (mh != NULL) {
++    mh->in_use = 0;
++    mh->type = 0;
++    mh->handle_str = NULL;
++    mh->handle_len = 0;
++    mh->fd = -1;
++    mh->pflags = 0;
++    mh->original_path = NULL;
++    mh->actual_path = NULL;
++    mh->file_listing = NULL;
++    mh->file_listing_size = 0;
 +  }
 +}
 +
@@ -2669,7 +2670,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +    /* Initializes all the slots. */
 +    for (i = 0; i < num_mitm_handles; i++)
-+      mitm_handle_init(i);
++      mitm_handle_init(&mitm_handles[i]);
 +
 +    /* Since we just allocated a new array, we know slot 0 is unoccupied. */
 +    unused_handle = 0;
@@ -2694,7 +2695,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +    /* Initialize the slots we just expanded. */
 +    for (; i < num_mitm_handles; i++)
-+      mitm_handle_init(i);
++      mitm_handle_init(&mitm_handles[i]);
 +  }
 +
 +  /* Mark this slot as being in use. */
@@ -2776,11 +2777,11 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +/* Write discovered data to our local file.  We do this for both remote server
 + * reads and writes. */
 +void mitm_handle_read_write(char *handle_str, size_t handle_len, u_int64_t offset, u_char *buf, size_t buf_len) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index)) {
-+    lseek(mitm_handles[index].fd, offset, SEEK_SET);
-+    write(mitm_handles[index].fd, buf, buf_len);
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
++    lseek(mh->fd, offset, SEEK_SET);
++    write(mh->fd, buf, buf_len);
 +  } else
 +    logit(CANT_FIND_HANDLE, __func__);
 +}
@@ -2788,27 +2789,26 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +/* Close the local file descriptor associated with this remote server handle.
 + * Frees the slot this handle is in. */
 +void mitm_handle_close(const char *handle_str, size_t handle_len) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index)) {
-+    close(mitm_handles[index].fd);
-+    mitm_handle_free(index);
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
++    close(mh->fd);
++    mitm_handle_free(mh);
 +  } else
 +    logit(CANT_FIND_HANDLE, __func__);
 +}
 +
-+/* Searches for the index that the specified remote server handle occupies.
-+ * Returns 1 on success and sets "index", otherwise returns 0. */
-+int mitm_handle_search(const char *handle_str, size_t handle_len, u_int *index) {
++/* Searches for an MITMHandle, given its remote server handle and length.
++ * Returns a pointer to it on success, or NULL if it could not be found. */
++MITMHandle *mitm_handle_search(const char *handle_str, size_t handle_len) {
 +  u_int i = 0;
 +
 +  for (i = 0; i < num_mitm_handles; i++) {
 +    if ((mitm_handles[i].in_use == 1) && (mitm_handles[i].handle_len == handle_len) && (memcmp(mitm_handles[i].handle_str, handle_str, handle_len) == 0)) {
-+      *index = i;
-+      return 1;
++      return &mitm_handles[i];
 +    }
 +  }
-+  return 0;
++  return NULL;
 +}
 +
 +
@@ -3716,7 +3716,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
  	for (;;) {
  		memset(rset, 0, set_size);
-@@ -1706,3 +2292,336 @@
+@@ -1706,3 +2292,335 @@
  			    __func__, ssh_err(r));
  	}
  }
@@ -3943,15 +3943,15 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +/* Log a file transfer or directory listing. */
 +void sftp_log_close(u_int status, char *handle_str, size_t handle_len) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index)) {
-+    char *original_path = mitm_handles[index].original_path;
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
++    char *original_path = mh->original_path;
 +
 +    /* If a file handle was closed... */
-+    if (mitm_handles[index].type == MITM_HANDLE_TYPE_FILE) {
-+      u_int32_t pflags = mitm_handles[index].pflags;
-+      char *actual_path = mitm_handles[index].actual_path;
++    if (mh->type == MITM_HANDLE_TYPE_FILE) {
++      u_int32_t pflags = mh->pflags;
++      char *actual_path = mh->actual_path;
 +      const char get[] = "get";
 +      const char put[] = "put";
 +      const char getput[] = "get/put";
@@ -3970,7 +3970,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +      /* Make a link in the log to the local file we saved. */
 +      sftp_log_no_filter(status, "%s <a href=\"%s\">%s</a>", verb, actual_path, original_path);
 +    } else { /* ...a directory was closed. */
-+      sftp_log(status, "ls %s\n%s", original_path, mitm_handles[index].file_listing);
++      sftp_log(status, "ls %s\n%s", original_path, mh->file_listing);
 +    }
 +  } else
 +    logit(CANT_FIND_HANDLE, __func__);
@@ -3986,22 +3986,21 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +/* Given a handle, writes an Attrib struct to the log. */
 +void sftp_log_handle_attrib(const char *func, u_int status, char *handle_str, size_t handle_len, Attrib *a) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index))
-+    sftp_log_attrib(func, status, mitm_handles[index].original_path, a);
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
++    sftp_log_attrib(func, status, mh->original_path, a);
 +  else
 +    logit(CANT_FIND_HANDLE, __func__);
 +}
 +
 +/* Stores the result of a readdir() call (done during file listings). */
 +void sftp_log_readdir(char *handle_str, size_t handle_len, char *listing) {
-+  u_int index = 0;
 +  int resize_needed = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index)) {
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
 +    size_t listing_len = strlen(listing);
-+    MITMHandle *mh = &mitm_handles[index];
 +
 +    /* If the file listing array hasn't been initialized yet, do that now. */
 +    if (mh->file_listing_size == 0) {
@@ -4036,20 +4035,20 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +/* Given a file handle, writes a statvfs struct to the log. */
 +void sftp_log_fstatvfs(u_int status, char *handle_str, size_t handle_len, struct statvfs *st) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index))
-+    sftp_log_statvfs(status, mitm_handles[index].original_path, st);
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
++    sftp_log_statvfs(status, mh->original_path, st);
 +  else
 +    logit(CANT_FIND_HANDLE, __func__);
 +}
 +
 +/* Logs an fsync() call. */
 +void sftp_log_fsync(u_int status, char *handle_str, size_t handle_len) {
-+  u_int index = 0;
++  MITMHandle *mh = NULL;
 +
-+  if (mitm_handle_search(handle_str, handle_len, &index))
-+    sftp_log(status, "fsync \"%s\"", mitm_handles[index].original_path);
++  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
++    sftp_log(status, "fsync \"%s\"", mh->original_path);
 +  else
 +    logit(CANT_FIND_HANDLE, __func__);
 +}
