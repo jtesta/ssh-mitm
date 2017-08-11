@@ -1,4 +1,4 @@
-# SSH MITM v1.2-dev
+# SSH MITM v2.0-dev
 
 Author: [Joe Testa](http://www.positronsecurity.com/about-us/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
@@ -14,15 +14,15 @@ Of course, the victim's SSH client will complain that the server's key has chang
 
 ## Change Log
 
-* v1.0: May 16, 2017: Initial revision.
+* v2.0: August ??, 2017: Added full SFTP support(!)
 * v1.1: July 6, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added *JoesAwesomeSSHMITMVictimFinder.py* script to find potential targets on a LAN.
+* v1.0: May 16, 2017: Initial revision.
 
 
 ## To Do
 
 The following list tracks areas to improve:
 
-* Log SFTP sessions.
 * Add port forwarding support.
 * Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
 
