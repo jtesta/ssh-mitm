@@ -1,6 +1,6 @@
 # SSH MITM v2.0-dev
 
-Author: [Joe Testa](http://www.positronsecurity.com/about-us/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
+Author: [Joe Testa](https://www.positronsecurity.com/company/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
 
 ## Overview
