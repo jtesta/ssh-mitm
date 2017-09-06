@@ -758,7 +758,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c
 --- openssh-7.5p1/session.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/session.c	2017-09-06 12:32:37.073409667 -0400
++++ openssh-7.5p1-mitm/session.c	2017-09-06 16:57:39.557685039 -0400
 @@ -40,6 +40,9 @@
  #ifdef HAVE_SYS_STAT_H
  # include <sys/stat.h>
@@ -982,11 +982,12 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  		setproctitle("%s@%s", s->pw->pw_name, INTERNAL_SFTP_NAME);
  		args = xstrdup(command ? command : "sftp-server");
  		for (i = 0, (p = strtok(args, " ")); p; (p = strtok(NULL, " ")))
-@@ -1628,9 +1672,14 @@
+@@ -1628,9 +1672,15 @@
  #ifdef WITH_SELINUX
  		ssh_selinux_change_context("sftpd_t");
  #endif
 -		exit(sftp_server_main(i, argv, s->pw));
++		debug3("MITM: SFTP server PID: %u", getpid());
 +		exit(sftp_server_main(i, argv, s->pw,
 +#ifdef DEBUG_HOST
 +					DEBUG_HOST, DEBUG_PORT,
@@ -999,7 +1000,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	fflush(NULL);
  
  	/* Get the last component of the shell name. */
-@@ -1646,6 +1695,11 @@
+@@ -1646,6 +1696,11 @@
  	 */
  	if (!command) {
  		char argv0[256];
@@ -1011,7 +1012,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  		/* Start the shell.  Set initial character to '-'. */
  		argv0[0] = '-';
-@@ -1658,9 +1712,33 @@
+@@ -1658,9 +1713,33 @@
  		}
  
  		/* Execute the shell. */
@@ -1047,7 +1048,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  
  		/* Executing the shell failed. */
  		perror(shell);
-@@ -1674,8 +1752,11 @@
+@@ -1674,8 +1753,11 @@
  	argv[1] = "-c";
  	argv[2] = (char *) command;
  	argv[3] = NULL;
@@ -1060,7 +1061,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	exit(1);
  }
  
-@@ -1927,6 +2008,11 @@
+@@ -1927,6 +2009,11 @@
  	debug2("subsystem request for %.100s by user %s", s->subsys,
  	    s->pw->pw_name);
  
@@ -1072,7 +1073,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	for (i = 0; i < options.num_subsystems; i++) {
  		if (strcmp(s->subsys, options.subsystem_name[i]) == 0) {
  			prog = options.subsystem_command[i];
-@@ -1958,6 +2044,10 @@
+@@ -1958,6 +2045,10 @@
  {
  	int success;
  
@@ -1083,7 +1084,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (s->auth_proto != NULL || s->auth_data != NULL) {
  		error("session_x11_req: session %d: "
  		    "x11 forwarding already active", s->self);
-@@ -1999,6 +2089,12 @@
+@@ -1999,6 +2090,12 @@
  
  	char *command = packet_get_string(&len);
  	packet_check_eom();
@@ -1096,7 +1097,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	success = do_exec(s, command) == 0;
  	free(command);
  	return success;
-@@ -2022,6 +2118,10 @@
+@@ -2022,6 +2119,10 @@
  	char *name, *val;
  	u_int name_len, val_len, i;
  
@@ -1107,7 +1108,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	name = packet_get_cstring(&name_len);
  	val = packet_get_cstring(&val_len);
  	packet_check_eom();
-@@ -2056,6 +2156,11 @@
+@@ -2056,6 +2157,11 @@
  {
  	static int called = 0;
  	packet_check_eom();
@@ -1119,7 +1120,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
  		debug("session_auth_agent_req: no_agent_forwarding_flag");
  		return 0;
-@@ -2113,7 +2218,7 @@
+@@ -2113,7 +2219,7 @@
  
  void
  session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
@@ -1128,7 +1129,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  {
  	/*
  	 * now that have a child and a pipe to the child,
-@@ -2124,7 +2229,7 @@
+@@ -2124,7 +2230,7 @@
  	channel_set_fds(s->chanid,
  	    fdout, fdin, fderr,
  	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
@@ -1137,7 +1138,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  }
  
  /*
-@@ -2320,6 +2425,15 @@
+@@ -2320,6 +2426,15 @@
  	}
  	session_proctitle(s);
  	session_unused(s->self);
@@ -1153,7 +1154,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  }
  
  void
-@@ -2532,6 +2646,10 @@
+@@ -2532,6 +2647,10 @@
  	if (authctxt == NULL)
  		return;
  
@@ -1164,7 +1165,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  #ifdef USE_PAM
  	if (options.use_pam) {
  		sshpam_cleanup();
-@@ -2578,3 +2696,219 @@
+@@ -2578,3 +2697,219 @@
  	return remote;
  }
  
@@ -2500,7 +2501,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  void	sftp_server_cleanup_exit(int) __attribute__((noreturn));
 diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey.sh -x openssh.xml -x buildpkg.sh -x output.0 -x requests -x traces.0 -x configure openssh-7.5p1/sftp-server.c openssh-7.5p1-mitm/sftp-server.c
 --- openssh-7.5p1/sftp-server.c	2017-03-19 22:39:27.000000000 -0400
-+++ openssh-7.5p1-mitm/sftp-server.c	2017-09-06 11:17:53.318191000 -0400
++++ openssh-7.5p1-mitm/sftp-server.c	2017-09-06 17:52:03.413685039 -0400
 @@ -39,6 +39,7 @@
  #include <time.h>
  #include <unistd.h>
@@ -3718,7 +3719,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
  	for (;;) {
  		memset(rset, 0, set_size);
-@@ -1706,3 +2292,335 @@
+@@ -1706,3 +2292,336 @@
  			    __func__, ssh_err(r));
  	}
  }
@@ -3980,10 +3981,11 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +/* Writes an Attrib struct to the log. */
 +void sftp_log_attrib(const char *sftp_func, u_int status, char *name, Attrib *a) {
-+  if (a != NULL)
++  if (a != NULL) {
 +    status = SSH2_FX_OK;
-+
-+  sftp_log(status, "%s \"%s\" (Result: flags: %u; size: %lu; uid: %u; gid: %u; perm: 0%o, atime: %u, mtime: %u)", sftp_func, name, a->flags, a->size, a->uid, a->gid, a->perm, a->atime, a->mtime);
++    sftp_log(status, "%s \"%s\" (Result: flags: %u; size: %lu; uid: %u; gid: %u; perm: 0%o, atime: %u, mtime: %u)", sftp_func, name, a->flags, a->size, a->uid, a->gid, a->perm, a->atime, a->mtime);
++  } else
++    sftp_log(status, "%s \"%s\" (Result: flags: ?; size: ?; uid: ?; gid: ?; perm: ?, atime: ?, mtime: ?)", sftp_func, name);
 +}
 +
 +/* Given a handle, writes an Attrib struct to the log. */
