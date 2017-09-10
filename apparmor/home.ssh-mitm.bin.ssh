@@ -1,0 +1,26 @@
+#include <tunables/global>
+
+/home/ssh-mitm/bin/ssh {
+  #include <abstractions/base>
+
+  network inet stream,
+  network inet6 stream,
+
+  /dev/pts/* rw,
+  /proc/*/fd/ r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+
+  /home/ssh-mitm/bin/ssh mr,
+
+  # Allow reads & writes to the tmp/ dir.
+  /home/ssh-mitm/tmp/* rw,
+
+  # Allow the creation of the .ssh/ dir, and reads & writes to the known_hosts
+  # file.
+  /home/ssh-mitm/.ssh/ w,
+  /home/ssh-mitm/.ssh/known_hosts rw,
+
+  # Allow SFTP logging.
+  /home/ssh-mitm/sftp_session_*.html w,
+}

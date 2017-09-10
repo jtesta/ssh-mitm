@@ -1,0 +1,44 @@
+#include <tunables/global>
+
+/home/ssh-mitm/bin/sshd_mitm {
+  #include <abstractions/base>
+  #include <abstractions/wutmp>
+
+  network inet dgram,
+  network inet stream,
+  network inet6 dgram,
+  network inet6 stream,
+  network netlink raw,
+
+  /bin/bash r,
+  /dev/ptmx rw,
+  /dev/pts/* rw,
+  /dev/tty rw,
+  /etc/gai.conf r,
+  /etc/group r,
+  /etc/ld.so.cache r,
+  /etc/nsswitch.conf r,
+  /etc/passwd r,
+  /proc/*/fd/ r,
+  /proc/*/oom_score_adj rw,
+
+  # sshd_mitm execs itself, along with the ssh client.
+  /home/ssh-mitm/bin/sshd_mitm mr,
+  /home/ssh-mitm/bin/sshd_mitm ix,
+  /home/ssh-mitm/bin/ssh px,
+
+  # Allow empty/ to be read, along with the host keys & config from etc/.
+  /home/ssh-mitm/empty/ r,
+  /home/ssh-mitm/etc/* r,
+
+  # Allow writes to the pid file, along with anything in tmp/ (this is where
+  # sockets are created for the ssh client to read the password from).
+  /home/ssh-mitm/sshd.pid w,
+  /home/ssh-mitm/tmp/* w,
+
+  # Allow the shell and SFTP logs to be written.
+  /home/ssh-mitm/shell_session_*.txt w,
+  /home/ssh-mitm/sftp_session_*.html w,
+  /home/ssh-mitm/sftp_session_*/ w,
+  /home/ssh-mitm/sftp_session_*/* w,
+}
