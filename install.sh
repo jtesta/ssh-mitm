@@ -158,9 +158,9 @@ function compile_openssh {
     make -j `nproc --all`
     popd > /dev/null
 
-    # Ensure that sshd, ssh, and sftp-server was built.
-    if [[ (! -f $openssh_source_dir/sshd) || (! -f $openssh_source_dir/ssh) || (! -f $openssh_source_dir/sftp-server) ]]; then
-        echo -e "\nFailed to build ssh, sshd, and/or sftp-server.  Terminating."
+    # Ensure that sshd and ssh were built.
+    if [[ (! -f $openssh_source_dir/sshd) || (! -f $openssh_source_dir/ssh) ]]; then
+        echo -e "\nFailed to build ssh and/or sshd.  Terminating."
         exit -1
     fi
 }
@@ -185,10 +185,9 @@ function setup_environment {
     # Copy the executables to the "bin" directory.
     cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm
     cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh
-    cp $openssh_source_dir/sftp-server ~ssh-mitm/bin/sftp-server
 
     # Strip the debugging symbols out of the executables.
-    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh ~ssh-mitm/bin/sftp-server
+    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
 
     # Create a 4096-bit RSA host key and ED25519 host key.
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''

@@ -14,12 +14,11 @@ else
 fi
 popd
 
-if [[ (! -f openssh-7.5p1-mitm/sshd) || (! -f openssh-7.5p1-mitm/ssh) || (! -f openssh-7.5p1-mitm/sftp-server) ]]; then
+if [[ (! -f openssh-7.5p1-mitm/sshd) || (! -f openssh-7.5p1-mitm/ssh) ]]; then
    echo -e "\n\t!!!! Compile error !!!!\n"
    exit -1
 fi
 
 cp openssh-7.5p1-mitm/sshd ~ssh-mitm/bin/sshd_mitm
 cp openssh-7.5p1-mitm/ssh ~ssh-mitm/bin/ssh
-cp openssh-7.5p1-mitm/sftp-server ~ssh-mitm/bin/sftp-server
 su - ssh-mitm -c "./run.sh"
