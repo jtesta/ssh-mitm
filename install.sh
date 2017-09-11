@@ -227,6 +227,12 @@ EOF
     # The user may not want it on their system, so we shouldn't force it.
     if [[ $? != 0 ]]; then
         echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
+
+        # Kali needs extra instructions in order to get AppArmor installed.
+        grep Kali /etc/lsb-release > /dev/null
+        if [[ $? == 0 ]]; then
+            echo -e "\n\tKali Linux requires extra steps to get AppArmor installed and functional.  Ensure profiles are loaded upon boot-up with:\n\n\t\t# update-rc.d apparmor enable\n\n\tAppArmor must be enabled on boot-up.  Edit the /etc/default/grub file, and change the following line:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"\n\n\tto:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet apparmor=1 security=apparmor\"\n\n\tLastly, reboot the system.\n"
+        fi
     fi
 }
 
