@@ -221,13 +221,12 @@ EOF
     cp apparmor/home.ssh-mitm.bin.ssh /etc/apparmor.d/
 
     # Enable the profiles.
-    aa-enforce /home/ssh-mitm/bin/sshd_mitm 2> /dev/null
-    aa-enforce /home/ssh-mitm/bin/ssh 2> /dev/null
+    service apparmor reload 2> /dev/null
 
-    # Print a warning if 'aa-enforce' isn't installed, but continue on anyway.
-    # The user may not want AppArmor on their system, so we shouldn't force it.
+    # Print a warning if AppArmor isn't installed, but continue on anyway.
+    # The user may not want it on their system, so we shouldn't force it.
     if [[ $? != 0 ]]; then
-        echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor apparmor-utils\".\n"
+        echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
     fi
 }
 
