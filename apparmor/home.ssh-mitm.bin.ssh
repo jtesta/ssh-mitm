@@ -5,6 +5,7 @@
 
   network inet stream,
   network inet6 stream,
+  network unix stream,
 
   /dev/pts/* rw,
   /proc/*/fd/ r,
