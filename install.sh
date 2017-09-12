@@ -234,25 +234,25 @@ EOF
 
             # Is Kali installed, or is it a Live CD boot?
             if [[ -f /etc/default/grub ]]; then  # Its installed.
-                echo -e "\nKali Linux detected with no AppArmor installed.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Would you like to automatically enable AppArmor? (y/n) "
+                echo -e -n "\nKali Linux detected with no AppArmor installed.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Would you like to automatically enable AppArmor? (y/n) "
                 read -n 1 install_apparmor
                 echo -e "\n"
 
                 # If the user chose to install AppArmor...
                 if [[ ($install_apparmor == 'y') || ($install_apparmor == 'Y') ]]; then
-                    echo "Getting apparmor from repository..."
+                    echo -e "Getting apparmor from repository...\n"
                     apt -y install apparmor
 
-                    echo "Enabling AppArmor on startup..."
+                    echo -e "\nEnabling AppArmor on startup...\n"
                     update-rc.d apparmor enable
 
-                    echo "Updating bootloader..."
+                    echo -e "\nUpdating bootloader...\n"
                     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/GRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor"/' /etc/default/grub
                     update-grub2
 
                     echo -e "\nFinished installing AppArmor.  Reboot to enable it.\n"
                 else  # User declined to install AppArmor.
-                    echo -e "\nAppArmor will not be automatically installed.\n"
+                    echo -e "\nAppArmor will not be automatically installed."
                 fi
             else  # Kali Live CD boot.
                 echo -e "\n\n\t!!! WARNING !!!: AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
