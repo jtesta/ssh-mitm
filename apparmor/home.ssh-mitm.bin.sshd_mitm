@@ -32,10 +32,12 @@
   /home/ssh-mitm/empty/ r,
   /home/ssh-mitm/etc/* r,
 
-  # Allow writes to the pid file, along with anything in tmp/ (this is where
-  # sockets are created for the ssh client to read the password from).
+  # Allow writes to the pid file.
   /home/ssh-mitm/sshd.pid w,
-  /home/ssh-mitm/tmp/* w,
+
+  # Allow reads and writes to anything in tmp/ (this is where sockets are
+  # created for the ssh client to read the password from).
+  /home/ssh-mitm/tmp/* rw,
 
   # Allow the shell and SFTP logs to be written.
   /home/ssh-mitm/shell_session_*.txt w,
