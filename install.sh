@@ -231,7 +231,7 @@ EOF
         # Kali needs extra instructions in order to get AppArmor installed.
         grep Kali /etc/lsb-release > /dev/null
         if [[ $? == 0 ]]; then
-            echo -e "\n\tKali Linux requires extra steps to get AppArmor installed and functional.  Ensure profiles are loaded upon boot-up with:\n\n\t\t# update-rc.d apparmor enable\n\n\tAppArmor must be enabled on boot-up.  Edit the /etc/default/grub file, and change the following line:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"\n\n\tto:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet apparmor=1 security=apparmor\"\n\n\tLastly, run:\n\n\t\tupdate-grub2\n\n\tThen reboot the system.\n\n!!! READ WARNING ABOVE !!!\n"
+            echo -e "\n\tKali Linux requires extra steps to get AppArmor installed and functional.  Ensure profiles are loaded upon boot-up with:\n\n\t\t# update-rc.d apparmor enable\n\n\tAppArmor must be enabled on boot-up.  Edit the /etc/default/grub file, and change the following line:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"\n\n\tto:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet apparmor=1 security=apparmor\"\n\n\tLastly, run:\n\n\t\tupdate-grub2\n\n\tThen reboot the system.\n\n\t!!! READ WARNING ABOVE !!!\n"
         fi
     fi
 }
