@@ -144,7 +144,7 @@ All SFTP activity is captured as well.  Use a browser to view *sftp_session_0.ht
 
 In *lol.h* are two defines: *DEBUG_HOST* and *DEBUG_PORT*.  Enable them and set the hostname to a test server.  Now you can connect to *sshd_mitm* directly without using ARP spoofing in order to test your changes, e.g.:
 
-    ssh -p 2222 valid_user_on_debug_host@debug_host
+    ssh -p 2222 valid_user_on_debug_host@localhost
 
 To test out changes to the OpenSSH source code, use the *dev/redeploy.sh* script.
 
