@@ -223,15 +223,43 @@ EOF
     # Enable the profiles.
     service apparmor reload 2> /dev/null
 
-    # Print a warning if AppArmor isn't installed, but continue on anyway.
-    # The user may not want it on their system, so we shouldn't force it.
+    # If AppArmor isn't installed, give Kali users a chance to install it
+    # automatically (if Kali is installed to disk).  For other distros,
+    # simply print a warning.
     if [[ $? != 0 ]]; then
-        echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
 
-        # Kali needs extra instructions in order to get AppArmor installed.
+        # Is this Kali Linux?
         grep Kali /etc/lsb-release > /dev/null
         if [[ $? == 0 ]]; then
-            echo -e "\n\tKali Linux requires extra steps to get AppArmor installed and functional.  Ensure profiles are loaded upon boot-up with:\n\n\t\t# update-rc.d apparmor enable\n\n\tAppArmor must be enabled on boot-up.  Edit the /etc/default/grub file, and change the following line:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"\n\n\tto:\n\n\t\tGRUB_CMDLINE_LINUX_DEFAULT=\"quiet apparmor=1 security=apparmor\"\n\n\tLastly, run:\n\n\t\tupdate-grub2\n\n\tThen reboot the system.\n\n\t!!! READ WARNING ABOVE !!!\n"
+
+            # Is Kali installed, or is it a Live CD boot?
+            if [[ -f /etc/default/grub ]]; then  # Its installed.
+                echo -e "\nKali Linux detected with no AppArmor installed.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Would you like to automatically enable AppArmor? (y/n) "
+                read -n 1 install_apparmor
+                echo -e "\n"
+
+                # If the user chose to install AppArmor...
+                if [[ ($install_apparmor == 'y') || ($install_apparmor == 'Y') ]]; then
+                    echo "Getting apparmor from repository..."
+                    apt -y install apparmor
+
+                    echo "Enabling AppArmor on startup..."
+                    update-rc.d apparmor enable
+
+                    echo "Updating bootloader..."
+                    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/GRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor"/' /etc/default/grub
+                    update-grub2
+
+                    echo -e "\nFinished installing AppArmor.  Reboot to enable it.\n"
+                else  # User declined to install AppArmor.
+                    echo -e "\nAppArmor will not be automatically installed.\n"
+                fi
+            else  # Kali Live CD boot.
+                echo -e "\n\n\t!!! WARNING !!!: AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
+            fi
+
+        else  # This is not Kali Linux.
+            echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
         fi
     fi
 }
