@@ -112,6 +112,7 @@ Note that the characters in the user's commands appear twice in the file because
 
 All SFTP activity is captured as well.  Use a browser to view *sftp_session_0.html*.  It contains a log of commands, with links to files uploaded and downloaded:
 
+    # cat /home/ssh-mitm/sftp_session_0.txt
     <html><pre>Hostname: 10.199.30.x
     Username: jdog
     Password: supercalifragilistic
