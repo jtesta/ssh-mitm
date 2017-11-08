@@ -68,13 +68,18 @@ total_local_servers = []
 # Debug logging.
 def d(msg):
     if debug:
-        print(msg)
+        print(msg, flush=True)
 
 
 # Verbose logging.
 def v(msg):
     if verbose:
-        print(msg)
+        print(msg, flush=True)
+
+
+# Always print.
+def p(msg=''):
+    print(msg, flush=True)
 
 
 # Captures control-C interruptions and gracefully terminates tshark and
@@ -83,7 +88,7 @@ def signal_handler(signum, frame):
     global ettercap_proc, tshark_proc, forwarding_was_off
 
     d('Signal handler called.')
-    print("\nShutting down ettercap and tshark gracefully.  Please wait...")
+    p("\nShutting down ettercap and tshark gracefully.  Please wait...")
 
     # tshark can just be terminated.
     if tshark_proc is not None:
@@ -110,7 +115,7 @@ def signal_handler(signum, frame):
             tshark_proc = None
             d('tshark terminated with return code %d' % retcode)
         except subprocess.TimeoutExpired as e:
-            print('WARNING: tshark did not terminate after 20 seconds!  Sending SIGKILL...')
+            p('WARNING: tshark did not terminate after 20 seconds!  Sending SIGKILL...')
             pass
 
     # tshark survived more than 20 seconds after a SIGTERM, so now send it
@@ -122,7 +127,7 @@ def signal_handler(signum, frame):
             tshark_proc = None
             d('After SIGKILL, tshark terminated with return code %d' % retcode)
         except subprocess.TimeoutExpired as e:
-            print('ERROR: tshark did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % tshark_proc.pid)
+            p('ERROR: tshark did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % tshark_proc.pid)
             pass
 
     # Wait up to 20 seconds for ettercap to quit after telling it to.
@@ -144,7 +149,7 @@ def signal_handler(signum, frame):
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
         except subprocess.TimeoutExpired as e:
-            print('ERROR: ettercap did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % ettercap_proc.pid)
+            p('ERROR: ettercap did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % ettercap_proc.pid)
             pass
 
     # If IP forwarding was off before this script was launched, disable it
@@ -155,20 +160,20 @@ def signal_handler(signum, frame):
 
 
     # Print all the IPs found.
-    print()
+    p()
     if len(total_local_clients) > 0:
-        print("\nTotal local clients:")
+        p("\nTotal local clients:")
         for tup in total_local_clients:
-            print('  * %s -> %s:22' % (tup[0], tup[1]))
-        print()
+            p('  * %s -> %s:22' % (tup[0], tup[1]))
+        p()
     else:
-        print('No local clients found.  :(')
+        p('No local clients found.  :(')
 
     if len(total_local_servers) > 0:
-        print("\nTotal local servers:")
+        p("\nTotal local servers:")
         for tup in total_local_servers:
-            print('  * %s -> %s:22' % (tup[1], tup[0]))
-        print()
+            p('  * %s -> %s:22' % (tup[1], tup[0]))
+        p()
 
     exit(0)
 
@@ -188,12 +193,12 @@ def check_prereqs():
 
     if len(missing_progs) > 0:
         missing_progs_str = ' '.join(missing_progs)
-        print("Error: the following pre-requisite programs are missing: %s\n\nInstall them with:  apt install %s" % (missing_progs_str, missing_progs_str))
+        p("Error: the following pre-requisite programs are missing: %s\n\nInstall them with:  apt install %s" % (missing_progs_str, missing_progs_str))
         exit(-1)
 
     # We must be running as root for ettercap to work.
     if os.geteuid() != 0:
-        print("Error: you must run this script as root.")
+        p("Error: you must run this script as root.")
         exit(-1)
 
     # Check if there are existing PREROUTING NAT rules enabled, and warn the
@@ -205,9 +210,9 @@ def check_prereqs():
 
         # Output with no rules has two lines.
         if prerouting_output.count("\n") > 2:
-            print("\nWARNING: it appears that you have entries in your PREROUTING NAT table.  Searching for SSH connections on the LAN with this script while PREROUTING rules are enabled may have unintended side-effects.  The output of 'iptables -t nat -nL PREROUTING' is:\n\n%s\n\n" % prerouting_output)
+            p("\nWARNING: it appears that you have entries in your PREROUTING NAT table.  Searching for SSH connections on the LAN with this script while PREROUTING rules are enabled may have unintended side-effects.  The output of 'iptables -t nat -nL PREROUTING' is:\n\n%s\n\n" % prerouting_output)
     except FileNotFoundError as e:
-        print('Warning: failed to run iptables.  Continuing...')
+        p('Warning: failed to run iptables.  Continuing...')
         pass
 
 
@@ -272,7 +277,7 @@ def get_lan_devices(network, gateway, ignore_list):
     try:
         hNmap.wait(30)
     except subprocess.TimeoutExpired as e:
-        print('Nmap ARP ping took longer than 30 seconds.  Terminating...')
+        p('Nmap ARP ping took longer than 30 seconds.  Terminating...')
         exit(-1)
 
     nmap_output = ''
@@ -385,8 +390,8 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
            local_server = ip2
            remote_client = ip1
        else:
-           print('Strange tshark output found: [%s]' % line)
-           print("\tdevice block: [%s]" % ",".join(device_block))
+           p('Strange tshark output found: [%s]' % line)
+           p("\tdevice block: [%s]" % ",".join(device_block))
            continue
 
        # Look for outgoing connections.
@@ -402,20 +407,20 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
                local_servers.append(tup)
 
     if len(local_clients) == 0 and len(local_servers) == 0:
-       print('No SSH connections found.')
+       v('No SSH connections found.')
 
     if len(local_clients) > 0:
-       print("\nLocal clients:")
+       p("\nLocal clients:")
        for tup in local_clients:
-           print('  * %s -> %s:22' % (tup[0], tup[1]))
-       print()
+           p('  * %s -> %s:22' % (tup[0], tup[1]))
+       p()
        total_local_clients.extend(x for x in local_clients if x not in total_local_clients)
 
     if len(local_servers) > 0:
-       print("\nLocal servers:")
+       p("\nLocal servers:")
        for tup in local_servers:
-           print('  * %s -> %s:22' % (tup[1], tup[0]))
-       print()
+           p('  * %s -> %s:22' % (tup[1], tup[0]))
+       p()
        total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
 
 
@@ -458,7 +463,7 @@ if __name__ == '__main__':
         try:
             ipaddress.ip_address(ip)
         except ValueError as e:
-            print('Error: %s is not a valid IP address.' % ip)
+            p('Error: %s is not a valid IP address.' % ip)
             exit(-1)
 
     # Parse the interface arg.
@@ -466,7 +471,7 @@ if __name__ == '__main__':
     try:
         addresses = netifaces.ifaddresses(interface)
     except ValueError as e:
-        print('Error parsing interface: %s' % str(e))
+        p('Error parsing interface: %s' % str(e))
         exit(-1)
 
     # Add our address(es) to the ignore list.
@@ -474,25 +479,25 @@ if __name__ == '__main__':
     if netifaces.AF_INET in addresses:
         for net_info in addresses[netifaces.AF_INET]:
             address = net_info['addr']
-            print("Found local address %s and adding to ignore list." % address)
+            p("Found local address %s and adding to ignore list." % address)
             local_addresses.append(address)
             ignore_list.append(address)
 
     if len(local_addresses) == 0:
-        print("Error: failed to get the IP address for interface %s" % interface)
+        p("Error: failed to get the IP address for interface %s" % interface)
         exit(-1)
 
     # Get the CIDR format of our network.
     net_info = addresses[netifaces.AF_INET][0]
     net_cidr = str(netaddr.IPNetwork('%s/%s' % (net_info['addr'], net_info['netmask'])))
-    print("Using network CIDR %s." % net_cidr)
+    p("Using network CIDR %s." % net_cidr)
 
     # Get the default gateway.
     if old_netifaces:
         gateway = args['gateway']
     else:
         gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
-    print("Found default gateway: %s" % gateway)
+    p("Found default gateway: %s" % gateway)
 
     # The number of IPs in the LAN to ARP spoof at a time.  This should be a
     # relatively low number, as spoofing too many clients at a time can cause
@@ -511,17 +516,17 @@ if __name__ == '__main__':
     verbose = args['verbose']
     debug = args['debug']
 
-    print('IP blocks of size %d will be spoofed for %d seconds each.' % (block_size, listen_time))
+    p('IP blocks of size %d will be spoofed for %d seconds each.' % (block_size, listen_time))
     if len(ignore_list) > 0:
-        print('The following IPs will be skipped: %s' % ' '.join(ignore_list))
+        p('The following IPs will be skipped: %s' % ' '.join(ignore_list))
     if one_pass:
-        print('The network will be scanned in only one pass.')
-    print("\n")
+        p('The network will be scanned in only one pass.')
+    p("\n")
 
     # If the user raised the block size to 10 or greater, warn them about the
     # potential consequences.
     if block_size >= 10:
-        print("WARNING: setting the block size too high will cause strain on your network interface.  Eventually, your interface will start dropping frames, causing a network denial-of-service and greatly raising suspicion.  However, raising the block size is safe on low-utilization networks.  You better know what you're doing!\n")
+        p("WARNING: setting the block size too high will cause strain on your network interface.  Eventually, your interface will start dropping frames, causing a network denial-of-service and greatly raising suspicion.  However, raising the block size is safe on low-utilization networks.  You better know what you're doing!\n")
 
     # Enable the signal handlers so that ettercap and tshark gracefully shut
     # down on CTRL-C.
@@ -550,5 +555,5 @@ if __name__ == '__main__':
     if forwarding_was_off:
         enable_ip_forwarding(False)
 
-    print('Single pass complete.')
+    p('Single pass complete.')
     exit(0)
