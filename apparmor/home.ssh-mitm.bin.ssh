@@ -8,6 +8,7 @@
   network unix stream,
 
   /dev/pts/* rw,
+  /dev/tty rw,
   /proc/*/fd/ r,
   /etc/nsswitch.conf r,
   /etc/passwd r,
