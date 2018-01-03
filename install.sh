@@ -179,8 +179,12 @@ function setup_environment {
     mkdir -m 0700 ~ssh-mitm/tmp
     chown ssh-mitm:ssh-mitm ~ssh-mitm/tmp
 
-    # Copy the config file to the "etc" directory.
+    # Copy the config files to the "etc" directory.
     cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
+    cp $openssh_source_dir/ssh_config ~ssh-mitm/etc/
+
+    # Add explicit algorithm lists to ssh client's config.
+    echo -e "\nHostKeyAlgorithms ssh-ed25519,ssh-rsa,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-dss\n\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group1-sha1\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr,aes256-cbc,aes192-cbc,aes128-cbc,blowfish-cbc,cast128-cbc,3des-cbc,arcfour256,arcfour128,arcfour\n\nMACs umac-128-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com,umac-64-etm@openssh.com,umac-64@openssh.com,hmac-ripemd160-etm@openssh.com,hmac-ripemd160@openssh.com,hmac-ripemd160,hmac-sha1-etm@openssh.com,hmac-sha1,hmac-sha1-96-etm@openssh.com,hmac-sha1-96,hmac-md5-etm@openssh.com,hmac-md5,hmac-md5-96-etm@openssh.com,hmac-md5-96\n" >> ~ssh-mitm/etc/ssh_config
 
     # Copy the executables to the "bin" directory.
     cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm
@@ -193,11 +197,13 @@ function setup_environment {
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
     ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''
 
-    # Create the "empty" directory to make the privsep function happy.
-    mkdir -m 0700 ~ssh-mitm/empty
+    # Create the "empty" directory to make the privsep function happy,
+    # as well as the ".ssh" directory (for some reason, this was observed
+    # to not be created properly at run-time...).
+    mkdir -m 0700 ~ssh-mitm/empty ~ssh-mitm/.ssh
 
     # Set ownership on the "empty" directory and SSH host keys.
-    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/etc/ssh_host_*key*
+    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/etc/ssh_host_*key*
 
     # Create the "run.sh" script, then set its permissions.
     cat > ~ssh-mitm/run.sh <<EOF

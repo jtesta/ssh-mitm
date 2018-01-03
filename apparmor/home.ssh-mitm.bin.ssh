@@ -15,6 +15,9 @@
 
   /home/ssh-mitm/bin/ssh mr,
 
+  # Allow reads to the config file.
+  /home/ssh-mitm/etc/ssh_config r,
+
   # Allow reads & writes to the tmp/ dir.
   /home/ssh-mitm/tmp/* rw,
 
