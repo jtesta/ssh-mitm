@@ -20,7 +20,7 @@
 
   # Allow writes to the log file (for stderr logging of the "ssh" and "sftp"
   # clients).
-  /home/ssh-mitm/client.log, w,
+  /home/ssh-mitm/client.log w,
 
   # Allow reads & writes to the tmp/ dir.
   /home/ssh-mitm/tmp/* rw,
