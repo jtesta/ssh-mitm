@@ -25,12 +25,21 @@ if [[ (! -f /home/ssh-mitm/run.sh) || (! -f /home/ssh-mitm/bin/sshd_mitm) ]]; th
     exit -1
 fi
 
+# Check if --force arg is present.
+FORCE=0
+if [[ ($# == 1) && ($1 == '--force') ]]; then
+    FORCE=1
+fi
+
+
 # If arpspoof or ettercap are running, stop.  Disabling the forwarding
 # configuration while still ARP spoofing would cause a denial of service...
 ps ax | awk '{print $5}' | egrep 'arpspoof|ettercap' > /dev/null
-if [[ $? == 0 ]]; then
-   echo "It looks like arpspoof or ettercap is still running.  You need to stop it before running this script, otherwise you'll cause a denial-of-service for the ARP targets."
+if [[ ($? == 0) && ($FORCE != 1) ]]; then
+   echo -e "It looks like arpspoof or ettercap is still running.  You need to stop it before running this script, otherwise you'll cause a denial-of-service for the ARP targets.\n\nOtherwise, if you know what you're doing, re-run this script with '--force'."
    exit -1
+else
+   echo "Forcing termination..."
 fi
 
 # Kill all processes belonging to the ssh-mitm user.
