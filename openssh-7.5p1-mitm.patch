@@ -1304,6 +1304,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +
 +    write(s->session_log_fd, "Hostname: ", 10);
 +    write(s->session_log_fd, lol->original_host, strlen(lol->original_host));
++    write(s->session_log_fd, lol->original_port, strlen(lol->original_port));
 +    write(s->session_log_fd, "\nUsername: ", 11);
 +    write(s->session_log_fd, lol->username, strlen(lol->username));
 +    write(s->session_log_fd, "\nPassword: ", 11);
