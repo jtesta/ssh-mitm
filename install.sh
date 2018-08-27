@@ -57,11 +57,13 @@ function install_prereqs {
     declare -a packages
     packages=(autoconf build-essential zlib1g-dev)
 
-    # Check if we are in Kali Linux.  Kali ships with OpenSSL v1.1.0, which
-    # OpenSSH doesn't support.  So we need to explicitly install the v1.0.2
-    # dev package.  Also, a bare-bones Kali installation may not have the
-    # killall tool, so install that in the psmisc package.
-    grep Kali /etc/lsb-release > /dev/null
+    # Check if we are in Kali Linux, Ubuntu 18.04, or Linux Mint 19.  These
+    # OSes ship with OpenSSL v1.1.0, which OpenSSH doesn't support.  So we
+    # need to explicitly install the v1.0.x dev package.
+    #
+    # Also, a bare-bones Kali installation may not have the killall tool,
+    # so install that in the psmisc package.
+    egrep "Kali|bionic|tara" /etc/lsb-release > /dev/null
     if [[ $? == 0 ]]; then
         packages+=(libssl1.0-dev psmisc)
     else
