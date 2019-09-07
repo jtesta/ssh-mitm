@@ -64,7 +64,7 @@ function install_prereqs {
     # Also, a bare-bones Kali installation may not have the killall tool,
     # so install that in the psmisc package.
     if [[ -f /etc/lsb-release ]]; then
-        egrep "Kali|bionic|tara" /etc/lsb-release > /dev/null
+        egrep "Kali|bionic|Linux Mint 19" /etc/lsb-release > /dev/null
     else
         egrep "Kali" /etc/os-release > /dev/null
     fi
