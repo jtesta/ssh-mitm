@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # install.sh
-# Copyright (C) 2017  Joe Testa <jtesta@positronsecurity.com>
+# Copyright (C) 2017-2019, Joe Testa <jtesta@positronsecurity.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms version 3 of the GNU General Public License as
@@ -63,7 +63,11 @@ function install_prereqs {
     #
     # Also, a bare-bones Kali installation may not have the killall tool,
     # so install that in the psmisc package.
-    egrep "Kali|bionic|tara" /etc/lsb-release > /dev/null
+    if [[ -f /etc/lsb-release ]]; then
+        egrep "Kali|bionic|tara" /etc/lsb-release > /dev/null
+    else
+        egrep "Kali" /etc/os-release > /dev/null
+    fi
     if [[ $? == 0 ]]; then
         packages+=(libssl1.0-dev psmisc)
     else
@@ -237,7 +241,7 @@ EOF
     if [[ $? != 0 ]]; then
 
         # Is this Kali Linux?
-        grep Kali /etc/lsb-release > /dev/null
+        grep Kali /etc/os-release > /dev/null
         if [[ $? == 0 ]]; then
 
             # Is Kali installed, or is it a Live CD boot?
