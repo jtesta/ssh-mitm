@@ -1,4 +1,4 @@
-# SSH MITM v2.1
+# SSH MITM v2.2
 
 Author: [Joe Testa](https://www.positronsecurity.com/company/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
@@ -14,6 +14,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 
 ## Change Log
 
+* v2.2: ???: Fixed installation on Kali.  Fixed a double-password prompt that occured under certain conditions.  Improved error logging.
 * v2.1: January 4, 2018: Enabled non-interactive command execution, connections to old servers with weak algorithms can now be intercepted, fixed two major bugs which caused AppArmor to kill some connections, and improved error logging.
 * v2.0: September 12, 2017: Added full SFTP support(!) and AppArmor confinement.
 * v1.1: July 6, 2017: Removed root privilege dependencies, added automatic installer, added Kali Linux support, added *JoesAwesomeSSHMITMVictimFinder.py* script to find potential targets on a LAN.
