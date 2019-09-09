@@ -22,6 +22,8 @@
   network inet6 stream,
   network unix stream,
 
+  signal receive set=(term) peer=/home/ssh-mitm/bin/sshd_mitm,
+
   /dev/pts/* rw,
   /dev/tty rw,
   /proc/*/fd/ r,

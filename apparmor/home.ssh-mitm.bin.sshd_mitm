@@ -26,6 +26,8 @@
   network unix stream,
   network netlink raw,
 
+  signal send set=(term) peer=/home/ssh-mitm/bin/ssh,
+
   /bin/bash r,
   /dev/ptmx rw,
   /dev/pts/* rw,
