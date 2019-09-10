@@ -215,7 +215,7 @@ function setup_environment {
     cat > ~ssh-mitm/run.sh <<EOF
 #!/bin/bash
 /home/ssh-mitm/bin/sshd_mitm -f /home/ssh-mitm/etc/sshd_config
-if [[ $? == 0 ]]; then
+if [[ \$? == 0 ]]; then
     echo "sshd_mitm is now running."
     exit 0
 else
