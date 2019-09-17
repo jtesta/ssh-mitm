@@ -559,7 +559,7 @@ diff -ru --new-file -x '*~' -x 'config.*' -x Makefile -x opensshd.init -x survey
 +#define LOL_H
 +
 +/* Current version of SSH MITM. */
-+#define SSH_MITM_VERSION "v2.2"
++#define SSH_MITM_VERSION "v2.3-dev"
 +
 +/* Define these in order to force connections to a test host.
 + * Useful for quickly testing changes without needing to ARP 
