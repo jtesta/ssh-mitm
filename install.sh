@@ -109,15 +109,9 @@ function get_openssh {
     fi
     echo -e "\n\nOpenSSH release key matches expected value.\n"
 
-    local gpg_verify=`gpg --verify $openssh_sig $openssh_sources 2>&1`
-    if [[ $gpg_verify != *"Good signature from \"Damien Miller <djm@mindrot.org>\""* ]]; then
-        echo -e "\n\nError: OpenSSH signature invalid!\n$gpg_verify\n\nTerminating."
-        rm -f $openssh_sources
-        exit -1
-    fi
-
     # Check GPG's return value.  0 denotes a valid signature, and 1 is returned
     # on invalid signatures.
+    local gpg_verify=`gpg --verify $openssh_sig $openssh_sources 2>&1`
     if [[ $? != 0 ]]; then
         echo -e "\n\nError: OpenSSH signature invalid!  Verification returned code: $?\n\nTerminating."
         rm -f $openssh_sources
