@@ -1,14 +1,24 @@
 # SSH MITM Victim Finder
 
+## Install
+
+## PyPi
+
+pip install ssh_mitm_victim_finder
+
+## Local file system
+
+pip install .
+
 ## Finding Targets
 
-The *JoesAwesomeSSHMITMVictimFinder.py* script makes finding targets on a LAN very easy.  It will ARP spoof a block of IPs and sniff for SSH traffic for a short period of time before moving on to the next block.  Any ongoing SSH connections originating from devices on the LAN are reported.
+*JoesAwesomeSSHMITMVictimFinder* makes finding targets on a LAN very easy.  It will ARP spoof a block of IPs and sniff for SSH traffic for a short period of time before moving on to the next block.  Any ongoing SSH connections originating from devices on the LAN are reported.
 
-By default, *JoesAwesomeSSHMITMVictimFinder.py* will ARP spoof and sniff only 5 IPs at a time for 20 seconds before moving onto the next block of 5.  These parameters can be tuned, though a trade-off exists: the more IPs that are spoofed at a time, the greater the chance you will catch an ongoing SSH connection, but also the greater the strain you will put on your puny network interface.  Under too high of a load, your interface will start dropping frames, causing a denial-of-service and greatly raising suspicions (this is bad).  The defaults shouldn't cause problems in most cases, though it'll take longer to find targets.  The block size can be safely raised on low-utilization networks.
+By default, *JoesAwesomeSSHMITMVictimFinder* will ARP spoof and sniff only 5 IPs at a time for 20 seconds before moving onto the next block of 5.  These parameters can be tuned, though a trade-off exists: the more IPs that are spoofed at a time, the greater the chance you will catch an ongoing SSH connection, but also the greater the strain you will put on your puny network interface.  Under too high of a load, your interface will start dropping frames, causing a denial-of-service and greatly raising suspicions (this is bad).  The defaults shouldn't cause problems in most cases, though it'll take longer to find targets.  The block size can be safely raised on low-utilization networks.
 
 Example:
 
-    # ./JoesAwesomeSSHMITMVictimFinder.py --interface enp0s3 --ignore-ips 10.11.12.50,10.11.12.53
+    # victim-finder --interface enp0s3 --ignore-ips 10.11.12.50,10.11.12.53
     Found local address 10.11.12.141 and adding to ignore list.
     Using network CIDR 10.11.12.141/24.
     Found default gateway: 10.11.12.1
