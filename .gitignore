@@ -4,3 +4,7 @@ openssh-7.5p1-mitm/
 openssh-7.5p1/
 openssh-7.5p1.tar.gz*
 uncommitted_changes.patch
+
+ssh_mitm_victim_finder/build/
+ssh_mitm_victim_finder/dist/
+*.egg-info
