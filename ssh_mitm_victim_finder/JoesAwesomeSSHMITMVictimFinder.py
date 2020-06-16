@@ -502,7 +502,8 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
         total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
 
 
-if __name__ == '__main__':
+def main():
+    global debug, verbose, aggressive_mode, total_local_clients, total_local_servers, main_thread_continue
     check_prereqs()
 
     parser = argparse.ArgumentParser()
@@ -634,3 +635,7 @@ if __name__ == '__main__':
         p('Single pass complete.')
 
     exit(0)
+
+
+if __name__ == '__main__':
+    main()
