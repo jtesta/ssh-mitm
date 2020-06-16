@@ -29,28 +29,17 @@
 #
 
 # Built-in modules.
-import argparse, importlib, ipaddress, os, signal, subprocess, sys, tempfile, threading
+import argparse
+import ipaddress
+import os
+import signal
+import subprocess
+import tempfile
+import threading
 from time import sleep
 
-# Python3 is required.
-if sys.version_info.major < 3:
-    print('Error: Python3 is required.  Re-run using python3 interpreter.')
-    exit(-1)
-
-# Check if the netaddr and netifaces modules can be imported.  Otherwise, print
-# a useful message to the user with how to install them.
-old_netifaces = False
-try:
-    import netaddr, netifaces
-
-    # Check if we're using an old version of netifaces (used in Ubuntu 14 and
-    # Linux Mint 17).  If so, the user will need to specify the gateway
-    # manually.
-    if (netifaces.version.startswith('0.8')):
-        old_netifaces = True
-except ImportError as e:
-    print("The Python3 netaddr and/or netifaces module is not installed.  Fix with:  apt install python3-netaddr python3-netifaces")
-    exit(-1)
+import netaddr
+import netifaces
 
 
 ettercap_proc = None
@@ -107,7 +96,7 @@ def signal_handler(signum, frame):
         d('Telling ettercap to shut down gracefully...')
         try:
             ettercap_proc.communicate("q\n".encode('ascii'))
-        except ValueError as e:
+        except ValueError:
             # It is possible that the main thread already called communicate(),
             # to terminate the process, so calling it again causes an exception.
             # In this case, just wait for it to terminate.
@@ -120,7 +109,7 @@ def signal_handler(signum, frame):
             retcode = tshark_proc.wait(20)
             tshark_proc = None
             d('tshark terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('WARNING: tshark did not terminate after 20 seconds!  Sending SIGKILL...')
             pass
 
@@ -132,7 +121,7 @@ def signal_handler(signum, frame):
             retcode = tshark_proc.wait(10)
             tshark_proc = None
             d('After SIGKILL, tshark terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('ERROR: tshark did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % tshark_proc.pid)
             pass
 
@@ -142,7 +131,7 @@ def signal_handler(signum, frame):
             retcode = ettercap_proc.wait(20)
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             pass
 
     # ettercap survived more than 20 seconds after a SIGTERM, so now send it
@@ -154,7 +143,7 @@ def signal_handler(signum, frame):
             retcode = ettercap_proc.wait(10)
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('ERROR: ettercap did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % ettercap_proc.pid)
             pass
 
@@ -163,7 +152,6 @@ def signal_handler(signum, frame):
     if forwarding_was_off is True:
         v('IP forwarding was off before.  Disabling it now...')
         enable_ip_forwarding(False)
-
 
     # Print all the IPs found.
     print_discovered()
@@ -205,7 +193,7 @@ class MenuHandler(threading.Thread):
         while not self.stop_requested:
             try:
                 c = input()[0:1].lower()
-            except ValueError as e:
+            except ValueError:
                 self.stop_requested = True
                 continue
 
@@ -242,7 +230,6 @@ class MenuHandler(threading.Thread):
                 print_discovered()
 
         d("Menu thread exiting.")
-
 
     def stop(self):
         self.stop_requested = True
@@ -281,7 +268,7 @@ def check_prereqs():
         # Output with no rules has two lines.
         if prerouting_output.count("\n") > 2:
             p("\nWARNING: it appears that you have entries in your PREROUTING NAT table.  Searching for SSH connections on the LAN with this script while PREROUTING rules are enabled may have unintended side-effects.  The output of 'iptables -t nat -nL PREROUTING' is:\n\n%s\n\n" % prerouting_output)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         p('Warning: failed to run iptables.  Continuing...')
         pass
 
@@ -293,7 +280,7 @@ def find_prog(prog_args):
         hProc = subprocess.Popen(prog_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         s, e = hProc.communicate()
         prog_found = True
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         pass
 
     return prog_found
@@ -333,7 +320,7 @@ def enable_ip_forwarding(flag):
     if current_ipv4_setting != flag:
         raise RuntimeError('Failed to set IP forwarding setting!: %r %r' % (current_ipv4_setting, flag))
 
-    return old_ipv4_setting == False
+    return old_ipv4_setting is False
 
 
 # Runs nmap to get the devices on the LAN that are alive (using ARP pings).
@@ -346,7 +333,7 @@ def get_lan_devices(network, gateway, ignore_list):
 
     try:
         hNmap.wait(30)
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         p('Nmap ARP ping took longer than 30 seconds.  Terminating...')
         exit(-1)
 
@@ -361,7 +348,7 @@ def get_lan_devices(network, gateway, ignore_list):
     for line in nmap_output:
         tokens = line.split()
         if tokens[0] == 'Host:':
-           ret.append(tokens[1])
+            ret.append(tokens[1])
 
     # Remove the gateway from the list of live devices.
     if gateway in ret:
@@ -397,7 +384,7 @@ def blocketize_devices(devices, block_size):
         device_block.append(device)
         i += 1
 
-        if (i >= block_size) or (devices.index(device) == (len(devices) - 1)) :
+        if (i >= block_size) or (devices.index(device) == (len(devices) - 1)):
             i = 0
             device_blocks.append(device_block)
             device_block = []
@@ -453,66 +440,66 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
     # Each line is in the following format:
     # 10.x.x.x\t174.x.x.x\t38564,22
     for line in lines:
-       if line == '':
-           continue
+        if line == '':
+            continue
 
-       fields = line.split("\t")
-       ip1 = fields[0]
-       ip2 = fields[1]
+        fields = line.split("\t")
+        ip1 = fields[0]
+        ip2 = fields[1]
 
-       ports = fields[2].split(',')
-       port1 = ports[0]
-       port2 = ports[1]
+        ports = fields[2].split(',')
+        port1 = ports[0]
+        port2 = ports[1]
 
-       local_client = None
-       local_server = None
-       remote_client = None
-       remote_server = None
-       if (ip1 in device_block) and (port2 == '22'):
-           local_client = ip1
-           remote_server = ip2
-       elif (ip2 in device_block) and (port1 == '22'):
-           local_client = ip2
-           remote_server = ip1
-       elif (ip1 in device_block) and (port1 == '22'):
-           local_server = ip1
-           remote_client = ip2
-       elif (ip2 in device_block) and (port2 == '22'):
-           local_server = ip2
-           remote_client = ip1
-       else:
-           p('Strange tshark output found: [%s]' % line)
-           p("\tdevice block: [%s]" % ",".join(device_block))
-           continue
+        local_client = None
+        local_server = None
+        remote_client = None
+        remote_server = None
+        if (ip1 in device_block) and (port2 == '22'):
+            local_client = ip1
+            remote_server = ip2
+        elif (ip2 in device_block) and (port1 == '22'):
+            local_client = ip2
+            remote_server = ip1
+        elif (ip1 in device_block) and (port1 == '22'):
+            local_server = ip1
+            remote_client = ip2
+        elif (ip2 in device_block) and (port2 == '22'):
+            local_server = ip2
+            remote_client = ip1
+        else:
+            p('Strange tshark output found: [%s]' % line)
+            p("\tdevice block: [%s]" % ",".join(device_block))
+            continue
 
-       # Look for outgoing connections.
-       if (local_client is not None) and (remote_server is not None):
-           tup = (local_client, remote_server)
-           if tup not in local_clients:
-               local_clients.append(tup)
-       # Look for incoming connections (implying a server is running on the
-       # LAN).
-       elif (local_server is not None) and (remote_client is not None):
-           tup = (local_server, remote_client)
-           if tup not in local_servers:
-               local_servers.append(tup)
+        # Look for outgoing connections.
+        if (local_client is not None) and (remote_server is not None):
+            tup = (local_client, remote_server)
+            if tup not in local_clients:
+                local_clients.append(tup)
+        # Look for incoming connections (implying a server is running on the
+        # LAN).
+        elif (local_server is not None) and (remote_client is not None):
+            tup = (local_server, remote_client)
+            if tup not in local_servers:
+                local_servers.append(tup)
 
     if len(local_clients) == 0 and len(local_servers) == 0:
-       v('No SSH connections found.')
+        v('No SSH connections found.')
 
     if len(local_clients) > 0:
-       p("\nLocal clients:")
-       for tup in local_clients:
-           p('  * %s -> %s:22' % (tup[0], tup[1]))
-       p()
-       total_local_clients.extend(x for x in local_clients if x not in total_local_clients)
+        p("\nLocal clients:")
+        for tup in local_clients:
+            p('  * %s -> %s:22' % (tup[0], tup[1]))
+        p()
+        total_local_clients.extend(x for x in local_clients if x not in total_local_clients)
 
     if len(local_servers) > 0:
-       p("\nLocal servers:")
-       for tup in local_servers:
-           p('  * %s -> %s:22' % (tup[1], tup[0]))
-       p()
-       total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
+        p("\nLocal servers:")
+        for tup in local_servers:
+            p('  * %s -> %s:22' % (tup[1], tup[0]))
+        p()
+        total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
 
 
 if __name__ == '__main__':
@@ -528,13 +515,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', help='enable verbose messages', action='store_true')
     parser.add_argument('-d', '--debug', help='enable debugging messages', action='store_true')
 
-    # If we loaded an old netifaces module, the user must specify the gateway
-    # manually.
-    if old_netifaces:
-        required.add_argument('--gateway', help='the network gateway', required=True)
-
     args = vars(parser.parse_args())
-
 
     # The network interface to use.
     interface = args['interface']
@@ -553,7 +534,7 @@ if __name__ == '__main__':
     for ip in ignore_list:
         try:
             ipaddress.ip_address(ip)
-        except ValueError as e:
+        except ValueError:
             p('Error: %s is not a valid IP address.' % ip)
             exit(-1)
 
@@ -583,11 +564,7 @@ if __name__ == '__main__':
     net_cidr = str(netaddr.IPNetwork('%s/%s' % (net_info['addr'], net_info['netmask'])))
     p("Using network CIDR %s." % net_cidr)
 
-    # Get the default gateway.
-    if old_netifaces:
-        gateway = args['gateway']
-    else:
-        gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
+    gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
     p("Found default gateway: %s" % gateway)
 
     # The number of IPs in the LAN to ARP spoof at a time.  This should be a
