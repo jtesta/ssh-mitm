@@ -14,7 +14,7 @@ Of course, the victim's SSH client will complain that the server's key has chang
 
 ## Change Log
 
-* v2.3: ???: ???
+* v2.3: ???: Added support for Linux Mint 20 & Ubuntu 20.
 * v2.2: September 16, 2019: Fixed installation on Kali & Linux Mint 19.  Fixed a double-password prompt that occured under certain conditions.  Improved error logging.
 * v2.1: January 4, 2018: Enabled non-interactive command execution, connections to old servers with weak algorithms can now be intercepted, fixed two major bugs which caused AppArmor to kill some connections, and improved error logging.
 * v2.0: September 12, 2017: Added full SFTP support(!) and AppArmor confinement.
