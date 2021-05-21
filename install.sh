@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # install.sh
-# Copyright (C) 2017-2019, Joe Testa <jtesta@positronsecurity.com>
+# Copyright (C) 2017-2021, Joe Testa <jtesta@positronsecurity.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms version 3 of the GNU General Public License as
@@ -18,6 +18,15 @@
 openssh_sources='openssh-7.5p1.tar.gz'
 openssh_source_dir='openssh-7.5p1'
 mitm_patch='openssh-7.5p1-mitm.patch'
+
+# Find the total number of CPU cores on this machine.
+NUM_PROCS=1
+if [[ -x /usr/bin/nproc ]]; then
+    NUM_PROCS=`/usr/bin/nproc --all`
+fi
+
+# Additional args for OpenSSH's configure script.
+ssh_additional_config=
 
 
 # Resets the environment (in case this script was run once before).
@@ -54,8 +63,9 @@ function reset_env {
 function install_prereqs {
     echo -e "Installing prerequisites...\n"
 
-    declare -a packages
+    declare -a packages need_openssl_sources
     packages=(autoconf build-essential zlib1g-dev)
+    need_openssl_sources=0
 
     # Check if we are in Kali Linux, Ubuntu 18.04, or Linux Mint 19.  These
     # OSes ship with OpenSSL v1.1.0, which OpenSSH doesn't support.  So we
@@ -68,16 +78,49 @@ function install_prereqs {
     else
         egrep "Kali" /etc/os-release > /dev/null
     fi
+
     if [[ $? == 0 ]]; then
         packages+=(libssl1.0-dev psmisc)
     else
-        packages+=(libssl-dev)
+       # On Linux Mint 20 / Ubuntu 20, there is no package that gives us OpenSSL 1.0.2, so we'll download and compile from sources.
+       need_openssl_sources=1
     fi
 
+    echo -e "Installing packages: ${packages[@]}"
     apt install -y ${packages[@]}
     if [[ $? != 0 ]]; then
         echo -e "Failed to install prerequisites.  Failed: apt install -y ${packages[@]}"
         exit -1
+    fi
+
+    # Download and compile OpenSSL v1.0.2 from sources.
+    if [[ $need_openssl_sources == 1 ]]; then
+       echo -e "\nDownloading OpenSSL v1.0.2 sources, since no package for it exists on this platform..."
+       if [[ -d "openssl_1_0_2" ]]; then
+           echo "OpenSSL v1.0.2 previously downloaded.  Refreshing sources..."
+           pushd openssl_1_0_2 > /dev/null
+           git pull
+           popd > /dev/null
+       else
+           git clone --depth 1 -b OpenSSL_1_0_2-stable https://github.com/openssl/openssl openssl_1_0_2
+       fi
+
+       echo -e "\nCompiling OpenSSL v1.0.2..."
+       pushd openssl_1_0_2 > /dev/null
+       make clean
+       ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib
+       make -j $NUM_PROCS depend
+       make -j $NUM_PROCS all
+       popd > /dev/null
+
+       if [[ (! -f openssl_1_0_2/libssl.a) || (! -f openssl_1_0_2/libcrypto.a) ]]; then
+           echo "\nFailed to build libssl.a and/or libcrypto.a in openssl_1_0_2/ directory!"
+           exit -1
+       fi
+       echo -e "\nSuccessfully built OpenSSL v1.0.2 from sources.\n"
+
+       # Add our OpenSSL dir to OpenSSH's configure script.
+       ssh_additional_config='--with-ssl-dir=../openssl_1_0_2'
     fi
 
     return 1
@@ -154,8 +197,8 @@ function compile_openssh {
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
 
-    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm
-    make -j `nproc --all`
+    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $ssh_additional_config
+    make -j $NUM_PROCS
     popd > /dev/null
 
     # Ensure that sshd and ssh were built.
