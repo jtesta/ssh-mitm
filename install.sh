@@ -245,6 +245,9 @@ function setup_environment {
     # to not be created properly at run-time...).
     mkdir -m 0700 ~ssh-mitm/empty ~ssh-mitm/.ssh
 
+    # Set ownership on the "empty" directory and SSH host keys.
+    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/etc/ssh_host_*key*
+
     # Create the "run.sh" script, then set its permissions.
     cat > ~ssh-mitm/run.sh <<EOF
 #!/bin/bash
@@ -258,9 +261,6 @@ else
 fi
 EOF
     chmod 0755 ~ssh-mitm/run.sh
-
-    # Set ownership of files under /home/ssh-mitm
-    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm
 
     # Install the AppArmor profiles.
     if [[ ! -d /etc/apparmor.d ]]; then
