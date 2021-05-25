@@ -33,4 +33,4 @@ RUN mkdir -m 0700 /home/ssh-mitm/tmp
 EXPOSE 2222/tcp
 
 # This is ugly, but its the only thing I found which works.  This generates a new ED25519 & RSA host key each time the container is run.
-CMD /usr/bin/ssh-keygen -q -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''; /usr/bin/ssh-keygen -q -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''; /home/ssh-mitm/bin/sshd_mitm -D -f /home/ssh-mitm/etc/sshd_config
+CMD /usr/bin/ssh-keygen -q -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''; /usr/bin/ssh-keygen -q -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''; /home/ssh-mitm/bin/sshd_mitm -D -e -f /home/ssh-mitm/etc/sshd_config
