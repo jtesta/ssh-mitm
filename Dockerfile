@@ -20,7 +20,8 @@ RUN cd /home/ssh-mitm/openssh-7.5p1 && \
 
 RUN ln -s /home/ssh-mitm/openssh-7.5p1/sshd /home/ssh-mitm/bin/sshd_mitm && \
     ln -s /home/ssh-mitm/openssh-7.5p1/ssh /home/ssh-mitm/bin/ssh && \
-    cp /home/ssh-mitm/openssh-7.5p1/sshd_config /home/ssh-mitm/etc/sshd_config
+    cp /home/ssh-mitm/openssh-7.5p1/sshd_config /home/ssh-mitm/etc/sshd_config && \
+    cp /home/ssh-mitm/openssh-7.5p1/ssh_config /home/ssh-mitm/etc/ssh_config
 
 
 USER ssh-mitm
