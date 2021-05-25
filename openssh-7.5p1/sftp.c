@@ -579,9 +579,10 @@ static int
 remote_is_dir(struct sftp_conn *conn, const char *path)
 {
 	Attrib *a;
+	u_int status;
 
 	/* XXX: report errors? */
-	if ((a = do_stat(conn, path, 1)) == NULL)
+	if ((a = do_stat(conn, path, 1, &status)) == NULL)
 		return(0);
 	if (!(a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS))
 		return(0);
@@ -1431,6 +1432,7 @@ parse_dispatch_command(struct sftp_conn *conn, const char *cmd, char **pwd,
 	char path_buf[PATH_MAX];
 	int err = 0;
 	glob_t g;
+	u_int status;
 
 	path1 = path2 = NULL;
 	cmdnum = parse_args(&cmd, &ignore_errors, &aflag, &fflag, &hflag,
@@ -1500,11 +1502,12 @@ parse_dispatch_command(struct sftp_conn *conn, const char *cmd, char **pwd,
 		break;
 	case I_CHDIR:
 		path1 = make_absolute(path1, *pwd);
-		if ((tmp = do_realpath(conn, path1)) == NULL) {
+		if ((tmp = do_realpath(conn, path1, &status)) == NULL) {
 			err = 1;
 			break;
 		}
-		if ((aa = do_stat(conn, tmp, 0)) == NULL) {
+		u_int status;
+		if ((aa = do_stat(conn, tmp, 0, &status)) == NULL) {
 			free(tmp);
 			err = 1;
 			break;
@@ -1593,7 +1596,8 @@ parse_dispatch_command(struct sftp_conn *conn, const char *cmd, char **pwd,
 		path1 = make_absolute(path1, *pwd);
 		remote_glob(conn, path1, GLOB_NOCHECK, NULL, &g);
 		for (i = 0; g.gl_pathv[i] && !interrupted; i++) {
-			if (!(aa = do_stat(conn, g.gl_pathv[i], 0))) {
+			u_int status;
+			if (!(aa = do_stat(conn, g.gl_pathv[i], 0, &status))) {
 				if (err_abort) {
 					err = -1;
 					break;
@@ -2041,6 +2045,7 @@ interactive_loop(struct sftp_conn *conn, char *file1, char *file2)
 	char cmd[2048];
 	int err, interactive;
 	EditLine *el = NULL;
+	u_int status;
 #ifdef USE_LIBEDIT
 	History *hl = NULL;
 	HistEvent hev;
@@ -2078,7 +2083,7 @@ interactive_loop(struct sftp_conn *conn, char *file1, char *file2)
 	}
 #endif /* USE_LIBEDIT */
 
-	remote_path = do_realpath(conn, ".");
+	remote_path = do_realpath(conn, ".", &status);
 	if (remote_path == NULL)
 		fatal("Need cwd");
 

@@ -72,6 +72,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <arpa/inet.h>
+#include <linux/netfilter_ipv4.h>
 
 #ifdef WITH_OPENSSL
 #include <openssl/dh.h>
@@ -122,6 +124,7 @@
 #include "ssh-sandbox.h"
 #include "version.h"
 #include "ssherr.h"
+#include "lol.h"
 
 /* Re-exec fds */
 #define REEXEC_DEVCRYPTO_RESERVED_FD	(STDERR_FILENO + 1)
@@ -200,6 +203,9 @@ struct {
 	Key	**host_certificates;	/* all public host certificates */
 	int	have_ssh2_key;
 } sensitive_data;
+
+
+Lol *lol = NULL;
 
 /* This is set to true when a signal is received. */
 static volatile sig_atomic_t received_sighup = 0;
@@ -543,10 +549,13 @@ privsep_preauth_child(void)
 	/* Demote the child */
 	if (getuid() == 0 || geteuid() == 0) {
 		/* Change our root directory */
+/* chroot() won't work since we are not running as root. */
+/*
 		if (chroot(_PATH_PRIVSEP_CHROOT_DIR) == -1)
 			fatal("chroot(\"%s\"): %s", _PATH_PRIVSEP_CHROOT_DIR,
 			    strerror(errno));
-		if (chdir("/") == -1)
+*/
+		if (chdir(MITM_ROOT) == -1)
 			fatal("chdir(\"/\"): %s", strerror(errno));
 
 		/* Drop our privileges */
@@ -672,6 +681,7 @@ privsep_postauth(Authctxt *authctxt)
  skip:
 	/* It is safe now to apply the key state */
 	monitor_apply_keystate(pmonitor);
+	monitor_apply_lol(pmonitor, lol);
 
 	/*
 	 * Tell the packet layer that authentication was successful, since
@@ -1372,6 +1382,18 @@ main(int ac, char **av)
 	int keytype;
 	Authctxt *authctxt;
 	struct connection_info *connection_info = get_connection_info(0, 0);
+#ifndef DEBUG_HOST
+	struct sockaddr_in origaddr;
+	socklen_t origaddr_len = sizeof(origaddr);
+#endif
+
+	lol = (Lol *)calloc(1, sizeof(Lol));
+
+        /* Terminate if sshd_mitm is running in a privileged account. */
+        if ((getuid() < 500) || (getgid() < 500) || (geteuid() < 500) || (getegid() < 500)) {
+            fprintf(stderr, "Error: sshd_mitm must be run under a non-privileged account!  UID and GID must be >= 500.\n");
+            exit(-1);
+        }
 
 	ssh_malloc_init();	/* must be called before any mallocs */
 
@@ -1631,6 +1653,16 @@ main(int ac, char **av)
 		exit(1);
 	}
 
+	if (!rexeced_flag) {
+#ifdef DEBUG_HOST
+#define _STR(x) #x
+#define STR(x) _STR(x)
+		char mode[] = "development mode: forcing connections to " DEBUG_HOST ":" STR(DEBUG_PORT);
+#else
+		char mode[] = "production mode";
+#endif
+		logit("SSH MITM " SSH_MITM_VERSION " starting (%s)", mode);
+	}
 	debug("sshd version %s, %s", SSH_VERSION,
 #ifdef WITH_OPENSSL
 	    SSLeay_version(SSLEAY_VERSION)
@@ -1780,7 +1812,8 @@ main(int ac, char **av)
 		    (st.st_uid != getuid () ||
 		    (st.st_mode & (S_IWGRP|S_IWOTH)) != 0))
 #else
-		if (st.st_uid != 0 || (st.st_mode & (S_IWGRP|S_IWOTH)) != 0)
+                /* Ownership of the chroot directory no longer relevant. */
+                if (0)
 #endif
 			fatal("%s must be owned by root and not group or "
 			    "world-writable.", _PATH_PRIVSEP_CHROOT_DIR);
@@ -1956,6 +1989,17 @@ main(int ac, char **av)
 	signal(SIGCHLD, SIG_DFL);
 	signal(SIGINT, SIG_DFL);
 
+#ifndef DEBUG_HOST
+	if (getsockopt(sock_in, SOL_IP, SO_ORIGINAL_DST, (struct sockaddr *)&origaddr, &origaddr_len) != 0)
+	  fatal("%s: getsockopt failed.", __func__);
+
+	lol->original_host = strdup(inet_ntoa(origaddr.sin_addr));
+	lol->original_port = ntohs(origaddr.sin_port);
+#else
+	lol->original_host = strdup(DEBUG_HOST);
+	lol->original_port = DEBUG_PORT;
+#endif
+
 	/*
 	 * Register our connection.  This turns encryption off because we do
 	 * not have a key.
@@ -2040,6 +2084,7 @@ main(int ac, char **av)
 	 */
 	if (use_privsep) {
 		mm_send_keystate(pmonitor);
+		mm_send_lol(pmonitor, lol);
 		exit(0);
 	}
 

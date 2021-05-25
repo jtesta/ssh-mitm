@@ -482,6 +482,28 @@ mm_send_keystate(struct monitor *monitor)
 	sshbuf_free(m);
 }
 
+void
+mm_send_lol(struct monitor *monitor, Lol *lol) {
+	struct sshbuf *m;
+
+	if ((m = sshbuf_new()) == NULL)
+		fatal("%s: sshbuf_new failed", __func__);
+	if (lol == NULL)
+		fatal("%s: lol is NULL!", __func__);
+
+	debug3("SENDING lol");
+
+	if (sshbuf_put_u32(m, lol->original_port) != 0 ||
+	    sshbuf_put_string(m, lol->username, strlen(lol->username)) != 0 ||
+	    sshbuf_put_string(m, lol->password, strlen(lol->password)) != 0) {
+		fatal("%s: can't pack lol!", __func__);
+	}
+
+	mm_request_send(monitor->m_recvfd, MONITOR_REQ_LOL, m);
+	debug3("%s: Finished sending lol", __func__);
+	sshbuf_free(m);
+}
+
 int
 mm_pty_allocate(int *ptyfd, int *ttyfd, char *namebuf, size_t namebuflen)
 {

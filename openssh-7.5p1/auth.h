@@ -59,6 +59,7 @@ struct Authctxt {
 	int		 server_caused_failure;
 	int		 force_pwchange;
 	char		*user;		/* username sent by the client */
+  	char		*original_user; /* username that the client actually wants to connect as */
 	char		*service;
 	struct passwd	*pw;		/* set if 'valid' */
 	char		*style;

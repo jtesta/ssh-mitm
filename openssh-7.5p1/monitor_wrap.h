@@ -28,6 +28,8 @@
 #ifndef _MM_WRAP_H_
 #define _MM_WRAP_H_
 
+#include "lol.h"
+
 extern int use_privsep;
 #define PRIVSEP(x)	(use_privsep ? mm_##x : x)
 
@@ -84,8 +86,11 @@ struct newkeys *mm_newkeys_from_blob(u_char *, int);
 int mm_newkeys_to_blob(int, u_char **, u_int *);
 
 void monitor_apply_keystate(struct monitor *);
+void monitor_apply_lol(struct monitor *, Lol *);
 void mm_get_keystate(struct monitor *);
+void mm_get_lol(struct monitor *);
 void mm_send_keystate(struct monitor*);
+void mm_send_lol(struct monitor *, Lol *);
 
 /* bsdauth */
 int mm_bsdauth_query(void *, char **, char **, u_int *, char ***, u_int **);

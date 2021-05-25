@@ -64,6 +64,8 @@
 #include "authfile.h"
 #include "ssherr.h"
 #include "authfd.h"
+#include "digest.h"
+#include "lol.h"
 
 char *client_version_string = NULL;
 char *server_version_string = NULL;
@@ -78,6 +80,8 @@ extern Options options;
 extern char *__progname;
 extern uid_t original_real_uid;
 extern uid_t original_effective_uid;
+extern int num_hostkey_fps;
+extern hostkey_fp *server_hostkey_fps;
 
 static int show_other_keys(struct hostkeys *, Key *);
 static void warn_changed_key(Key *);
@@ -916,10 +920,12 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 				    "address '%.128s' to the list of known "
 				    "hosts (%.500s).", type, ip,
 				    user_hostfiles[0]);
-			else
-				logit("Warning: Permanently added the %s host "
+			/* Suppress the warning about adding this host key. */
+			/*else
+			  logit("Warning: Permanently added the %s host "
 				    "key for IP address '%.128s' to the list "
-				    "of known hosts.", type, ip);
+				    "of known hosts.", type, ip);*/
+
 		} else if (options.visual_host_key) {
 			fp = sshkey_fingerprint(host_key,
 			    options.fingerprint_hash, SSH_FP_DEFAULT);
@@ -995,8 +1001,8 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 			    msg2);
 			free(ra);
 			free(fp);
-			if (!confirm(msg))
-				goto fail;
+			/*if (!confirm(msg))
+			  goto fail;*/
 			hostkey_trusted = 1; /* user explicitly confirmed */
 		}
 		/*
@@ -1023,13 +1029,17 @@ check_host_key(char *hostname, struct sockaddr *hostaddr, u_short port,
 			    host_key, options.hash_known_hosts);
 			hostp = host;
 		}
+		/* Suppress compiler warning about hostp being set but not
+		 * used. */
+		if (hostp) {}
 
 		if (!r)
 			logit("Failed to add the host to the list of known "
 			    "hosts (%.500s).", user_hostfiles[0]);
-		else
+		/* Suppress the warning message about adding to known_hosts  */
+		/*else
 			logit("Warning: Permanently added '%.200s' (%s) to the "
-			    "list of known hosts.", hostp, type);
+			"list of known hosts.", hostp, type);*/
 		break;
 	case HOST_REVOKED:
 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -1242,6 +1252,13 @@ verify_host_key(char *host, struct sockaddr *hostaddr, Key *host_key)
 	int r = -1, flags = 0;
 	char valid[64], *fp = NULL, *cafp = NULL;
 	struct sshkey *plain = NULL;
+
+	/* Add the host key's fingerprints to the array.  Both the old MD5 and new SHA256 fingerprints are stored. */
+	if ((server_hostkey_fps != NULL) && (num_hostkey_fps < MAX_SERVER_HOSTKEY_FPS)) {
+	  server_hostkey_fps[num_hostkey_fps].old = sshkey_fingerprint(host_key, SSH_DIGEST_MD5, SSH_FP_DEFAULT);
+	  server_hostkey_fps[num_hostkey_fps].new = sshkey_fingerprint(host_key, SSH_DIGEST_SHA256, SSH_FP_DEFAULT);
+	  num_hostkey_fps++;
+	}
 
 	if ((fp = sshkey_fingerprint(host_key,
 	    options.fingerprint_hash, SSH_FP_DEFAULT)) == NULL) {

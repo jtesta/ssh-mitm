@@ -29,7 +29,7 @@ int
 setresgid(gid_t rgid, gid_t egid, gid_t sgid)
 {
 	int ret = 0, saved_errno;
-
+	return 0;
 	if (rgid != sgid) {
 		errno = ENOSYS;
 		return -1;
@@ -64,7 +64,7 @@ int
 setresuid(uid_t ruid, uid_t euid, uid_t suid)
 {
 	int ret = 0, saved_errno;
-
+	return 0;
 	if (ruid != suid) {
 		errno = ENOSYS;
 		return -1;

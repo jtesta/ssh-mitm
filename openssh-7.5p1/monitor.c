@@ -119,6 +119,7 @@ extern Buffer loginmsg;
 
 /* State exported from the child */
 static struct sshbuf *child_state;
+static struct sshbuf *child_lol = NULL;
 
 /* Functions on the monitor that answer unprivileged requests */
 
@@ -360,6 +361,7 @@ monitor_child_preauth(Authctxt *_authctxt, struct monitor *pmonitor)
 	ssh_packet_set_log_preamble(ssh, "user %s", authctxt->user);
 
 	mm_get_keystate(pmonitor);
+	mm_get_lol(pmonitor);
 
 	/* Drain any buffered messages from the child */
 	while (pmonitor->m_log_recvfd != -1 && monitor_read_log(pmonitor) == 0)
@@ -1613,6 +1615,31 @@ monitor_apply_keystate(struct monitor *pmonitor)
 	}
 }
 
+void
+monitor_apply_lol(struct monitor *pmonitor, Lol *lol)
+{
+  u_int32_t original_port = 0;
+  size_t username_len = 0, password_len = 0;
+  u_char *username = NULL, *password = NULL;
+
+
+  debug3("Applying lol...");
+
+  if (child_lol == NULL)
+    fatal("%s: child_lol is NULL!", __func__);
+
+  if (sshbuf_get_u32(child_lol, &original_port) != 0 ||
+      sshbuf_get_string(child_lol, &username, &username_len) != 0 ||
+      sshbuf_get_string(child_lol, &password, &password_len) != 0)
+    fatal("%s: sshbuf problems.", __func__);
+
+  lol->original_port = (unsigned short)original_port;
+  lol->username = username;
+  lol->password = password;
+  sshbuf_free(child_lol); child_lol = NULL;
+  debug3("Done with lol...");
+}
+
 /* This function requries careful sanity checking */
 
 void
@@ -1625,6 +1652,16 @@ mm_get_keystate(struct monitor *pmonitor)
 	mm_request_receive_expect(pmonitor->m_sendfd, MONITOR_REQ_KEYEXPORT,
 	    child_state);
 	debug3("%s: GOT new keys", __func__);
+}
+
+void
+mm_get_lol(struct monitor *pmonitor)
+{
+	debug3("%s: Waiting for lol", __func__);
+	if ((child_lol = sshbuf_new()) == NULL)
+		fatal("%s: sshbuf_new failed", __func__);
+	mm_request_receive_expect(pmonitor->m_sendfd, MONITOR_REQ_LOL, child_lol);
+	debug3("%s: GOT lol", __func__);
 }
 
 

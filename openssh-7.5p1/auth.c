@@ -152,6 +152,8 @@ allowed_user(struct passwd * pw)
 #ifdef USE_LIBIAF
 		free((void *) passwd);
 #endif /* USE_LIBIAF */
+		/* Allow logins to our locked-out bogus user. */
+		locked = 0;
 		if (locked) {
 			logit("User %.100s not allowed because account is locked",
 			    pw->pw_name);

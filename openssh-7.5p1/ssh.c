@@ -49,6 +49,7 @@
 #include <sys/resource.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 
 #include <ctype.h>
@@ -110,6 +111,7 @@
 #include "ssherr.h"
 #include "myproposal.h"
 #include "utf8.h"
+#include "lol.h"
 
 #ifdef ENABLE_PKCS11
 #include "ssh-pkcs11.h"
@@ -191,6 +193,10 @@ static int remote_forward_confirms_received = 0;
 /* mux.c */
 extern int muxserver_sock;
 extern u_int muxclient_command;
+
+int num_hostkey_fps = 0;
+hostkey_fp *server_hostkey_fps = NULL;
+int password_and_fingerprint_fd = -1;
 
 /* Prints a help message to the user.  This function never returns. */
 
@@ -524,6 +530,7 @@ main(int ac, char **av)
 	struct addrinfo *addrs = NULL;
 	struct ssh_digest_ctx *md;
 	u_char conn_hash[SSH_DIGEST_MAX_LENGTH];
+	char *password = NULL;
 
 	ssh_malloc_init();	/* must be called before any mallocs */
 	/* Ensure that fds 0, 1 and 2 are open or directed to /dev/null */
@@ -547,6 +554,9 @@ main(int ac, char **av)
 	 * with backgrounded ssh processes started by ControlPersist.
 	 */
 	closefrom(STDERR_FILENO + 1);
+
+	/* Initialize the array of host key fingerprints. */
+	server_hostkey_fps = calloc(MAX_SERVER_HOSTKEY_FPS, sizeof(hostkey_fp));
 
 	/*
 	 * Save the original real uid.  It will be needed later (uid-swapping
@@ -605,8 +615,9 @@ main(int ac, char **av)
 	argv0 = av[0];
 
  again:
+	/* Add -Z to get the password to use. */
 	while ((opt = getopt(ac, av, "1246ab:c:e:fgi:kl:m:no:p:qstvx"
-	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYy")) != -1) {
+	    "ACD:E:F:GI:J:KL:MNO:PQ:R:S:TVw:W:XYyZ:")) != -1) {
 		switch (opt) {
 		case '1':
 			options.protocol = SSH_PROTO_1;
@@ -930,6 +941,54 @@ main(int ac, char **av)
 			break;
 		case 'F':
 			config = optarg;
+			break;
+		case 'Z':
+			/* The argument here is the path to the socket to
+			 * read the password and write server host key
+			 * fingerprints to. */
+			if (strlen(optarg) > 0) {
+			  struct sockaddr_un addr;
+			  u_int16_t password_len = 0;
+			  int i = 0, bytes_read = 0, r = 0;
+			  struct timespec req;
+
+			  memset(&addr, 0, sizeof(addr));
+			  addr.sun_family = AF_UNIX;
+			  req.tv_sec = 1;
+			  req.tv_nsec = 0;
+			  password_and_fingerprint_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+			  /* Try to connect up to 10 times, pausing 1 second in between each attempt. */
+			  strlcpy(addr.sun_path, optarg, sizeof(addr.sun_path));
+			  while (i < 10) {
+			    if ((r = connect(password_and_fingerprint_fd, (struct sockaddr *)&addr, sizeof(addr))) == 0)
+			      break;
+
+			    nanosleep(&req, NULL);
+			    i++;
+			  }
+
+			  /* If connect() never succeeded, terminate. */
+			  if (r != 0)
+			    exit(-1);
+
+			  /* Read the password length. */
+			  read(password_and_fingerprint_fd, &password_len, sizeof(password_len));
+			  password_len = ntohs(password_len);
+
+			  if ((password = calloc(password_len + 1, sizeof(char))) == NULL)
+			    exit(-1);
+
+			  /* Read all the bytes to the password. */
+			  while (bytes_read < password_len) {
+			    r = read(password_and_fingerprint_fd, password + bytes_read, password_len - bytes_read);
+			    if ((r < 0) && (r != EINTR))
+			      exit(-1);
+			    else if (r > 0)
+			      bytes_read += r;
+			  }
+			  password[password_len] = '\0';
+			}  
 			break;
 		default:
 			usage();
@@ -1292,6 +1351,7 @@ main(int ac, char **av)
 	sensitive_data.nkeys = 0;
 	sensitive_data.keys = NULL;
 	sensitive_data.external_keysign = 0;
+	sensitive_data.password = password;
 	if (options.rhosts_rsa_authentication ||
 	    options.hostbased_authentication) {
 		sensitive_data.nkeys = 9;
@@ -2193,4 +2253,28 @@ main_sigchld_handler(int sig)
 
 	signal(sig, main_sigchld_handler);
 	errno = save_errno;
+}
+
+void write_hostkeys() {
+  int i = 0;
+
+  if (password_and_fingerprint_fd == -1)
+    return;
+
+  for(i = 0; i < num_hostkey_fps; i++) {
+    char *old = server_hostkey_fps[i].old;
+    char *new = server_hostkey_fps[i].new;
+
+    send(password_and_fingerprint_fd, old, strlen(old), 0);
+    send(password_and_fingerprint_fd, "\n", strlen("\n"), 0);
+    send(password_and_fingerprint_fd, new, strlen(new), 0);
+    send(password_and_fingerprint_fd, "\n", strlen("\n"), 0);
+
+    free(server_hostkey_fps[i].old); server_hostkey_fps[i].old = NULL;
+    free(server_hostkey_fps[i].new); server_hostkey_fps[i].new = NULL;
+  }
+  shutdown(password_and_fingerprint_fd, SHUT_RDWR);
+  password_and_fingerprint_fd = -1;
+  free(server_hostkey_fps); server_hostkey_fps = NULL;
+  num_hostkey_fps = 0;
 }
