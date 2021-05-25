@@ -20,11 +20,6 @@ if [[ `id -u` != 0 ]]; then
     exit -1
 fi
 
-if [[ (! -f /home/ssh-mitm/run.sh) || (! -f /home/ssh-mitm/bin/sshd_mitm) ]]; then
-    echo "Error: could not find sshd_mitm.  You need to first run install.sh."
-    exit -1
-fi
-
 # Check if --force arg is present.
 FORCE=0
 if [[ ($# == 1) && ($1 == '--force') ]]; then
@@ -41,9 +36,6 @@ if [[ ($? == 0) && ($FORCE != 1) ]]; then
 else
    echo "Forcing termination..."
 fi
-
-# Kill all processes belonging to the ssh-mitm user.
-killall -u ssh-mitm 2> /dev/null
 
 echo "Disabling IP forwarding in the kernel..."
 echo 0 > /proc/sys/net/ipv4/ip_forward
@@ -72,5 +64,5 @@ if [[ $? == 0 ]]; then
     fi
 fi
 
-echo -e "\nSuccessfully stopped sshd_mitm daemon and disabled forwarding rules.\n"
+echo -e "\nSuccessfully disabled forwarding rules.\n"
 exit 0

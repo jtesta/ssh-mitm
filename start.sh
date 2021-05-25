@@ -20,15 +20,6 @@ if [[ `id -u` != 0 ]]; then
     exit -1
 fi
 
-# Make sure sshd_mitm was correctly installed.
-if [[ (! -f /home/ssh-mitm/run.sh) || (! -f /home/ssh-mitm/bin/sshd_mitm) ]]; then
-    echo "Error: could not find sshd_mitm.  You need to first run install.sh."
-    exit -1
-fi
-
-echo "Running sshd_mitm in unprivileged account..."
-su - ssh-mitm -c "./run.sh"
-
 echo "Enabling IP forwarding in kernel..."
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
