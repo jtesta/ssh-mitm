@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2018  Joe Testa <jtesta@positronsecurity.com>
+# Copyright (C) 2017-2021  Joe Testa <jtesta@positronsecurity.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms version 3 of the GNU General Public License as
@@ -57,8 +57,8 @@
   /home/ssh-mitm/tmp/* rw,
 
   # Allow the shell and SFTP logs to be written.
-  /home/ssh-mitm/shell_session_*.txt w,
-  /home/ssh-mitm/sftp_session_*.html w,
-  /home/ssh-mitm/sftp_session_*/ w,
-  /home/ssh-mitm/sftp_session_*/* w,
+  /home/ssh-mitm/log/shell_session_*.txt w,
+  /home/ssh-mitm/log/sftp_session_*.html w,
+  /home/ssh-mitm/log/sftp_session_*/ w,
+  /home/ssh-mitm/log/sftp_session_*/* w,
 }

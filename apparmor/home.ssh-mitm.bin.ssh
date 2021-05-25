@@ -37,7 +37,7 @@
 
   # Allow writes to the log file (for stderr logging of the "ssh" and "sftp"
   # clients).
-  /home/ssh-mitm/client.log w,
+  /home/ssh-mitm/log/client.log w,
 
   # Allow reads & writes to the tmp/ dir.
   /home/ssh-mitm/tmp/* rw,
@@ -48,5 +48,5 @@
   /home/ssh-mitm/.ssh/known_hosts rw,
 
   # Allow SFTP logging.
-  /home/ssh-mitm/sftp_session_*.html w,
+  /home/ssh-mitm/log/sftp_session_*.html w,
 }

@@ -220,21 +220,24 @@ function setup_environment {
     chmod 0700 ~ssh-mitm
     mkdir -m 0755 ~ssh-mitm/{bin,etc,log}
     mkdir -m 0700 ~ssh-mitm/tmp
-    chown ssh-mitm:ssh-mitm ~ssh-mitm/tmp
+    chown ssh-mitm:ssh-mitm ~ssh-mitm/{tmp,log}
 
-    # Copy the config files to the "etc" directory.
-    cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/
-    cp $openssh_source_dir/ssh_config ~ssh-mitm/etc/
+    # Strip the debugging symbols out of the executables.
+    strip $openssh_source_dir/sshd $openssh_source_dir/ssh
+
+    # Make a copy of the ssh client config, since we need to modify it.
+    cp $openssh_source_dir/ssh_config $openssh_source_dir/ssh_config.mitm
 
     # Add explicit algorithm lists to ssh client's config.
-    echo -e "\nHostKeyAlgorithms ssh-ed25519,ssh-rsa,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-dss\n\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group1-sha1\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr,aes256-cbc,aes192-cbc,aes128-cbc,blowfish-cbc,cast128-cbc,3des-cbc,arcfour256,arcfour128,arcfour\n\nMACs umac-128-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com,umac-64-etm@openssh.com,umac-64@openssh.com,hmac-ripemd160-etm@openssh.com,hmac-ripemd160@openssh.com,hmac-ripemd160,hmac-sha1-etm@openssh.com,hmac-sha1,hmac-sha1-96-etm@openssh.com,hmac-sha1-96,hmac-md5-etm@openssh.com,hmac-md5,hmac-md5-96-etm@openssh.com,hmac-md5-96\n" >> ~ssh-mitm/etc/ssh_config
+    echo -e "\nHostKeyAlgorithms ssh-ed25519,ssh-rsa,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-dss\n\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group1-sha1\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr,aes256-cbc,aes192-cbc,aes128-cbc,blowfish-cbc,cast128-cbc,3des-cbc,arcfour256,arcfour128,arcfour\n\nMACs umac-128-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com,umac-64-etm@openssh.com,umac-64@openssh.com,hmac-ripemd160-etm@openssh.com,hmac-ripemd160@openssh.com,hmac-ripemd160,hmac-sha1-etm@openssh.com,hmac-sha1,hmac-sha1-96-etm@openssh.com,hmac-sha1-96,hmac-md5-etm@openssh.com,hmac-md5,hmac-md5-96-etm@openssh.com,hmac-md5-96\n" >> $openssh_source_dir/ssh_config.mitm
+
+    # Copy the config files to the "etc" directory.
+    cp $openssh_source_dir/sshd_config ~ssh-mitm/etc/sshd_config
+    cp $openssh_source_dir/ssh_config.mitm ~ssh-mitm/etc/ssh_config
 
     # Copy the executables to the "bin" directory.
     cp $openssh_source_dir/sshd ~ssh-mitm/bin/sshd_mitm
     cp $openssh_source_dir/ssh ~ssh-mitm/bin/ssh
-
-    # Strip the debugging symbols out of the executables.
-    strip ~ssh-mitm/bin/sshd_mitm ~ssh-mitm/bin/ssh
 
     # Create a 4096-bit RSA host key and ED25519 host key.
     ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''
