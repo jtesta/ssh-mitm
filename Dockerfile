@@ -1,14 +1,26 @@
 FROM ubuntu:20.04
 
 # Install openssh-client so we have ssh-keygen.
-RUN apt update -qq && apt install -y -q openssh-client
-RUN useradd -m -s /bin/bash ssh-mitm
+RUN apt update -qq && apt install -y -q openssh-client build-essential autoconf libz-dev git
+RUN useradd -m -s /bin/bash ssh-mitm && \
+    mkdir -p /home/ssh-mitm/bin /home/ssh-mitm/etc && \
+    chown ssh-mitm:ssh-mitm /home/ssh-mitm/etc/
 
-COPY openssh-7.5p1-mitm/sshd /home/ssh-mitm/bin/sshd_mitm
-COPY openssh-7.5p1-mitm/ssh /home/ssh-mitm/bin/ssh
-COPY openssh-7.5p1-mitm/ssh_config.mitm /home/ssh-mitm/etc/ssh_config
-COPY openssh-7.5p1-mitm/sshd_config /home/ssh-mitm/etc/sshd_config
-RUN chown ssh-mitm:ssh-mitm /home/ssh-mitm/etc/
+COPY openssh-7.5p1 /home/ssh-mitm/openssh-7.5p1/
+
+RUN git clone --depth 1 -b OpenSSL_1_0_2-stable https://github.com/openssl/openssl OpenSSL_1_0_2 && \
+    cd OpenSSL_1_0_2 && ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib && \
+    make -j 1 depend && make -j 1 all
+
+
+RUN cd /home/ssh-mitm/openssh-7.5p1 && \
+     autoconf && \
+    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm --with-ssl-dir=/OpenSSL_1_0_2 && \
+    make -j 1
+
+RUN ln -s /home/ssh-mitm/openssh-7.5p1/sshd /home/ssh-mitm/bin/sshd_mitm && \
+    ln -s /home/ssh-mitm/openssh-7.5p1/ssh /home/ssh-mitm/bin/ssh && \
+    cp /home/ssh-mitm/openssh-7.5p1/sshd_config /home/ssh-mitm/etc/sshd_config
 
 
 USER ssh-mitm
