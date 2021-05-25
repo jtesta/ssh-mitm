@@ -4,3 +4,5 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+      - "2222:2222"
