@@ -2,7 +2,7 @@
 #define LOL_H
 
 /* Current version of SSH MITM. */
-#define SSH_MITM_VERSION "v2.3-dev"
+#define SSH_MITM_VERSION "v3.0-dev"
 
 /* Define these in order to force connections to a test host.
  * Useful for quickly testing changes without needing to ARP 
