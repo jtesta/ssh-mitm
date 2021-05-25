@@ -1,4 +1,4 @@
-# SSH MITM v2.3-dev
+# SSH MITM v3.0-dev
 
 Author: [Joe Testa](https://www.positronsecurity.com/company/) ([@therealjoetesta](https://twitter.com/therealjoetesta))
 
