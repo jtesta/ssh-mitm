@@ -4,7 +4,7 @@ FROM ubuntu:20.04
 RUN apt update -qq && apt install -y -q openssh-client build-essential autoconf libz-dev git
 RUN useradd -m -s /bin/bash ssh-mitm && \
     mkdir -p /home/ssh-mitm/bin /home/ssh-mitm/etc /home/ssh-mitm/log && \
-    chown ssh-mitm:ssh-mitm /home/ssh-mitm/etc/
+    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/
 
 COPY openssh-7.5p1 /home/ssh-mitm/openssh-7.5p1/
 
@@ -32,4 +32,4 @@ RUN mkdir -m 0700 /home/ssh-mitm/tmp
 EXPOSE 2222/tcp
 
 # This is ugly, but its the only thing I found which works.  This generates a new ED25519 & RSA host key each time the container is run.
-CMD /usr/bin/ssh-keygen -q -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''; /usr/bin/ssh-keygen -q -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''; /home/ssh-mitm/bin/sshd_mitm -f /home/ssh-mitm/etc/sshd_config
+CMD /usr/bin/ssh-keygen -q -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''; /usr/bin/ssh-keygen -q -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''; /home/ssh-mitm/bin/sshd_mitm -D -f /home/ssh-mitm/etc/sshd_config
