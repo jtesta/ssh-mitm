@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 
 # Install openssh-client so we have ssh-keygen.
-RUN apt update -qq && apt install -y -q openssh-client build-essential autoconf libz-dev git
+RUN apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -y -q openssh-client build-essential autoconf libz-dev git
 RUN useradd -m -s /bin/bash ssh-mitm && \
     mkdir -p /home/ssh-mitm/bin /home/ssh-mitm/etc /home/ssh-mitm/log && \
     chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/
