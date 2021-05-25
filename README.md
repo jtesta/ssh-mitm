@@ -5,16 +5,16 @@ Author: [Joe Testa](https://www.positronsecurity.com/company/) ([@therealjoetest
 
 ## Overview
 
-This penetration testing tool allows an auditor to intercept SSH connections.  A patch applied to the OpenSSH v7.5p1 source code causes it to act as a proxy between the victim and their intended SSH server; all plaintext passwords and sessions are logged to disk.
+This penetration testing tool allows an auditor to intercept SSH connections.  A modified version of OpenSSH v7.5p1 causes it to act as a proxy between the victim and their intended SSH server; all plaintext passwords and sessions are logged to disk.
 
 Of course, the victim's SSH client will complain that the server's key has changed.  But because 99.99999% of the time this is caused by a legitimate action (OS re-install, configuration change, etc), many/most users will disregard the warning and continue on.
 
-**NOTE:** Only run the modified *sshd_mitm* in a VM or container!  Ad-hoc edits were made to the OpenSSH sources in critical regions, with no regard to their security implications.  Its not hard to imagine these edits introduce serious vulnerabilities.
+**WARNING:** Ad-hoc edits were made to the OpenSSH sources in critical regions, with no regard to their security implications.  Its not hard to imagine these edits introduce serious vulnerabilities.
 
 
 ## Change Log
 
-* v2.3: ???: Added support for Linux Mint 20 & Ubuntu 20.
+* v3.0: ???: Added docker container to separate ssh-mitm from the host.
 * v2.2: September 16, 2019: Fixed installation on Kali & Linux Mint 19.  Fixed a double-password prompt that occured under certain conditions.  Improved error logging.
 * v2.1: January 4, 2018: Enabled non-interactive command execution, connections to old servers with weak algorithms can now be intercepted, fixed two major bugs which caused AppArmor to kill some connections, and improved error logging.
 * v2.0: September 12, 2017: Added full SFTP support(!) and AppArmor confinement.
@@ -32,7 +32,9 @@ The following list tracks areas to improve:
 
 ## Initial Setup
 
-As root, run the *install.sh* script.  This will install prerequisites from the repositories, download the OpenSSH archive, verify its signature, compile it, and initialize a non-privileged environment to execute within.
+To create the docker container, you need docker and docker-compose installed.
+
+All you need is run ``docker-compose up`` to start the ssh server
 
 
 ## Finding Targets
@@ -148,9 +150,3 @@ All SFTP activity is captured as well.  Use a browser to view *sftp_session_0.ht
 In *lol.h* are two defines: *DEBUG_HOST* and *DEBUG_PORT*.  Enable them and set the hostname to a test server.  Now you can connect to *sshd_mitm* directly without using ARP spoofing in order to test your changes, e.g.:
 
     ssh -p 2222 valid_user_on_debug_host@localhost
-
-To test out changes to the OpenSSH source code, use the *dev/redeploy.sh* script.
-
-To see a diff of uncommitted changes, use the *dev/make_diff_of_uncommitted_changes.sh* script.
-
-To re-generate a full patch to the OpenSSH sources, use the *dev/regenerate_patch.sh* script.
