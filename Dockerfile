@@ -1,10 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS builder
 
 # Install openssh-client so we have ssh-keygen.
-RUN apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -y -q openssh-client build-essential autoconf libz-dev git
-RUN useradd -m -s /bin/bash ssh-mitm && \
-    mkdir -p /home/ssh-mitm/bin /home/ssh-mitm/etc /home/ssh-mitm/log && \
-    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/
+RUN apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -y -q build-essential autoconf libz-dev git
 
 COPY openssh-7.5p1 /home/ssh-mitm/openssh-7.5p1/
 
@@ -18,11 +15,18 @@ RUN cd /home/ssh-mitm/openssh-7.5p1 && \
     ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm --with-ssl-dir=/OpenSSL_1_0_2 && \
     make -j 1
 
-RUN ln -s /home/ssh-mitm/openssh-7.5p1/sshd /home/ssh-mitm/bin/sshd_mitm && \
-    ln -s /home/ssh-mitm/openssh-7.5p1/ssh /home/ssh-mitm/bin/ssh && \
-    cp /home/ssh-mitm/openssh-7.5p1/sshd_config /home/ssh-mitm/etc/sshd_config && \
-    cp /home/ssh-mitm/openssh-7.5p1/ssh_config /home/ssh-mitm/etc/ssh_config
 
+FROM ubuntu:20.04
+
+RUN apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -y -q openssh-client
+RUN useradd -m -s /bin/bash ssh-mitm && \
+    mkdir -p /home/ssh-mitm/bin /home/ssh-mitm/etc /home/ssh-mitm/log && \
+    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/
+
+COPY --from=builder /home/ssh-mitm/openssh-7.5p1/sshd /home/ssh-mitm/bin/sshd_mitm
+COPY --from=builder /home/ssh-mitm/openssh-7.5p1/ssh /home/ssh-mitm/bin/ssh
+COPY --from=builder /home/ssh-mitm/openssh-7.5p1/sshd_config /home/ssh-mitm/etc/sshd_config
+COPY --from=builder /home/ssh-mitm/openssh-7.5p1/ssh_config /home/ssh-mitm/etc/ssh_config
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER ssh-mitm
