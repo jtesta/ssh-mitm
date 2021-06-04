@@ -1,7 +1,14 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04 as builder
 
-# Install openssh-client so we have ssh-keygen.
+# Install openssh-client so we get ssh-keygen.
 RUN apt update -qq && apt install -y -q openssh-client
+
+
+# Copy ssh-keygen (and library dependency) to our final image.
+FROM ubuntu:20.04
+COPY --from=builder /lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/x86_64-linux-gnu/libcrypto.so.1.1
+COPY --from=builder /usr/bin/ssh-keygen /usr/bin/ssh-keygen
+
 RUN useradd -m -s /bin/bash ssh-mitm
 
 COPY openssh-7.5p1-mitm/sshd /home/ssh-mitm/bin/sshd_mitm
