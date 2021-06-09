@@ -21,7 +21,9 @@ USER ssh-mitm
 WORKDIR /home/ssh-mitm
 RUN mkdir -m 0700 /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/tmp
 
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 2222/tcp
 
-# This is ugly, but its the only thing I found which works.  This generates a new ED25519 & RSA host key each time the container is run.
-CMD /usr/bin/ssh-keygen -t rsa -b 4096 -f /home/ssh-mitm/etc/ssh_host_rsa_key -N ''; /usr/bin/ssh-keygen -t ed25519 -f /home/ssh-mitm/etc/ssh_host_ed25519_key -N ''; echo; /home/ssh-mitm/bin/sshd_mitm -D -f /home/ssh-mitm/etc/sshd_config
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD /home/ssh-mitm/bin/sshd_mitm -D -f /home/ssh-mitm/etc/sshd_config
