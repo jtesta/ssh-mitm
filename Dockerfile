@@ -26,4 +26,4 @@ COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 EXPOSE 2222/tcp
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD /home/ssh-mitm/bin/sshd_mitm -D -e -f /home/ssh-mitm/etc/sshd_config
+CMD /home/ssh-mitm/bin/sshd_mitm -D -f /home/ssh-mitm/etc/sshd_config
