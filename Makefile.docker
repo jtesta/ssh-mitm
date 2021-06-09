@@ -1,0 +1,19 @@
+VERSION = $(shell grep SSH_MITM_VERSION *.patch | grep -E -o "\"(.*)\"" | head -1 | tr -d "\"")
+ifeq ($(VERSION),)
+  $(error "could not determine version!")
+endif
+
+FORWARDING_ENABLED = $(shell sysctl net.ipv4.ip_forward | grep -E -o "net.ipv4.ip_forward = 1")
+ifeq ($(FORWARDING_ENABLED),)
+  $(warning "IP forwarding is not enabled.  Building the image may fail.  Fix with: sysctl net.ipv4.ip_forward=1")
+endif
+
+all:
+	@echo "\nBuilding Docker image for SSH-MITM ${VERSION}\n"
+	docker build -t positronsecurity/ssh-mitm:${VERSION} .
+	docker tag positronsecurity/ssh-mitm:${VERSION} positronsecurity/ssh-mitm:latest
+
+upload:
+	docker login
+	docker push positronsecurity/ssh-mitm:${VERSION}
+	docker push positronsecurity/ssh-mitm:latest

