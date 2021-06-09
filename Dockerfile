@@ -19,7 +19,7 @@ RUN chown ssh-mitm:ssh-mitm /home/ssh-mitm/etc/
 
 USER ssh-mitm
 WORKDIR /home/ssh-mitm
-RUN mkdir -m 0700 /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/tmp
+RUN mkdir -m 0700 /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/tmp /home/ssh-mitm/log
 
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
