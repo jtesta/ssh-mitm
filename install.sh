@@ -15,25 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-openssh_sources='openssh-7.5p1.tar.gz'
-openssh_source_dir='openssh-7.5p1'
-mitm_patch='openssh-7.5p1-mitm.patch'
+openssh_source_dir='openssh-7.5p1-mitm'
+openssl_source_dir='openssl-1.0.2u'
 
 # Find the total number of CPU cores on this machine.
 NUM_PROCS=1
 if [[ -x /usr/bin/nproc ]]; then
     NUM_PROCS=`/usr/bin/nproc --all`
 fi
-
-# Additional args for OpenSSH's configure script.
-ssh_additional_config=
+echo "Detected ${NUM_PROCS} CPU cores."
 
 
 # Resets the environment (in case this script was run once before).
 function reset_env {
-
-    # Remove files previously downloaded.
-    rm -rf *.asc $openssh_sources $openssh_source_dir $openssh_source_dir-mitm
 
     # Make sure no sshd_mitm is running and the user is logged out.
     killall -u ssh-mitm 2> /dev/null
@@ -65,7 +59,6 @@ function install_prereqs {
 
     declare -a packages need_openssl_sources
     packages=(autoconf build-essential zlib1g-dev)
-    need_openssl_sources=0
 
     # Check if we are in Kali Linux, Ubuntu 18.04, or Linux Mint 19.  These
     # OSes ship with OpenSSL v1.1.0, which OpenSSH doesn't support.  So we
@@ -80,7 +73,7 @@ function install_prereqs {
     fi
 
     if [[ $? == 0 ]]; then
-        packages+=(libssl1.0-dev psmisc)
+        packages+=(psmisc)
     else
        # On Linux Mint 20 / Ubuntu 20, there is no package that gives us OpenSSL 1.0.2, so we'll download and compile from sources.
        need_openssl_sources=1
@@ -93,111 +86,35 @@ function install_prereqs {
         exit -1
     fi
 
-    # Download and compile OpenSSL v1.0.2 from sources.
-    if [[ $need_openssl_sources == 1 ]]; then
-       echo -e "\nDownloading OpenSSL v1.0.2 sources, since no package for it exists on this platform..."
-       if [[ -d "openssl_1_0_2" ]]; then
-           echo "OpenSSL v1.0.2 previously downloaded.  Refreshing sources..."
-           pushd openssl_1_0_2 > /dev/null
-           git pull
-           popd > /dev/null
-       else
-           git clone --depth 1 -b OpenSSL_1_0_2-stable https://github.com/openssl/openssl openssl_1_0_2
-       fi
+    # Compile OpenSSL v1.0.2u from sources.
+    echo -e "\nCompiling OpenSSL 1.0.2u..."
+    pushd $openssl_source_dir > /dev/null
+    make clean
+    ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib
+    make -j $NUM_PROCS depend
+    make -j $NUM_PROCS all
+    popd > /dev/null
 
-       echo -e "\nCompiling OpenSSL v1.0.2..."
-       pushd openssl_1_0_2 > /dev/null
-       make clean
-       ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib
-       make -j $NUM_PROCS depend
-       make -j $NUM_PROCS all
-       popd > /dev/null
-
-       if [[ (! -f openssl_1_0_2/libssl.a) || (! -f openssl_1_0_2/libcrypto.a) ]]; then
-           echo "\nFailed to build libssl.a and/or libcrypto.a in openssl_1_0_2/ directory!"
-           exit -1
-       fi
-       echo -e "\nSuccessfully built OpenSSL v1.0.2 from sources.\n"
-
-       # Add our OpenSSL dir to OpenSSH's configure script.
-       ssh_additional_config='--with-ssl-dir=../openssl_1_0_2'
-    fi
-
-    return 1
-}
-
-
-# Downloads OpenSSH and verifies its sources.
-function get_openssh {
-    local openssh_sig='openssh-7.5p1.tar.gz.asc'
-    local release_key_fingerprint_expected='59C2 118E D206 D927 E667  EBE3 D3E5 F56B 6D92 0D30'
-    local openssh_checksum_expected='9846e3c5fab9f0547400b4d2c017992f914222b3fd1f8eee6c7dc6bc5e59f9f0'
-
-    echo -e "\nGetting OpenSSH release key...\n"
-    wget https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/RELEASE_KEY.asc
-
-    echo -e "\nGetting OpenSSH sources...\n"
-    wget https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/$openssh_sources
-
-    echo -e "\nGetting OpenSSH signature...\n"
-    wget https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/$openssh_sig
-
-    echo -e "\nImporting OpenSSH release key...\n"
-    gpg --import RELEASE_KEY.asc
-
-    local release_key_fingerprint_actual=`gpg --fingerprint 6D920D30`
-    if [[ $release_key_fingerprint_actual != *"$release_key_fingerprint_expected"* ]]; then
-        echo -e "\nError: OpenSSH release key fingerprint does not match expected value!\n\tExpected: $release_key_fingerprint_expected\n\tActual: $release_key_fingerprint_actual\n\nTerminating."
-        exit -1
-    fi
-    echo -e "\n\nOpenSSH release key matches expected value.\n"
-
-    # Check GPG's return value.  0 denotes a valid signature, and 1 is returned
-    # on invalid signatures.
-    local gpg_verify=`gpg --verify $openssh_sig $openssh_sources 2>&1`
-    if [[ $? != 0 ]]; then
-        echo -e "\n\nError: OpenSSH signature invalid!  Verification returned code: $?\n\nTerminating."
-        rm -f $openssh_sources
+    if [[ (! -f $openssl_source_dir/libssl.a) || (! -f $openssl_source_dir/libcrypto.a) ]]; then
+        echo "\nFailed to build libssl.a and/or libcrypto.a in ${openssl_source_dir} directory!"
         exit -1
     fi
 
-    echo -e "Signature on OpenSSH sources verified.\n"
-
-    local openssh_checksum_actual=`sha256sum $openssh_sources`
-    if [[ $openssh_checksum_actual != "$openssh_checksum_expected"* ]]; then
-        echo -e "Error: OpenSSH checksum is invalid!  Terminating."
-        exit -1
-    fi
-
+    echo -e "\nSuccessfully built OpenSSL 1.0.2u from sources.\n"
     return 1
 }
 
 
 # Applies the MITM patch to OpenSSH and compiles it.
 function compile_openssh {
-    tar xzf $openssh_sources --no-same-owner
-    if [ ! -d $openssh_source_dir ]; then
-       echo "Failed to decompress OpenSSH sources!"
-       exit -1
-    fi
-    mv $openssh_source_dir "$openssh_source_dir"-mitm
-    openssh_source_dir="$openssh_source_dir"-mitm
-
     pushd $openssh_source_dir > /dev/null
-    echo -e "Patching OpenSSH sources...\n"
-    patch -p1 < ../$mitm_patch
 
-    if [[ $? != 0 ]]; then
-        echo "Failed to patch sources!: patch returned $?"
-        exit -1
-    fi
-
-    echo -e "\nDone.  Running autoconf...\n"
+    echo -e "Running autoconf in openssh-7.5p1-mitm/...\n"
     autoconf
 
     echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
-
-    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm $ssh_additional_config
+    ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm --with-ssl-dir=../$openssl_source_dir
+    make clean
     make -j $NUM_PROCS
     popd > /dev/null
 
@@ -206,6 +123,8 @@ function compile_openssh {
         echo -e "\nFailed to build ssh and/or sshd.  Terminating."
         exit -1
     fi
+
+    echo -e "\nSuccessfully built SSH MITM!\n"
 }
 
 
@@ -324,7 +243,6 @@ fi
 
 install_prereqs
 reset_env $1
-get_openssh
 compile_openssh
 setup_environment
 
