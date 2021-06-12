@@ -107,7 +107,7 @@ session_setup_sia(struct passwd *pw, char *tty)
 
 	sia_ses_release(&ent);
 
-	setuid(0);
+	/*setuid(0);*/
 	permanently_set_uid(pw);
 }
 

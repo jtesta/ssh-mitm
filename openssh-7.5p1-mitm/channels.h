@@ -164,6 +164,22 @@ struct Channel {
 	void			*mux_ctx;
 	int			mux_pause;
 	int     		mux_downstream_id;
+
+	int log_fd;		/* File handle for logging sessions. */
+	int is_sftp;            /* Set to 1 if this is an SFTP channel. */
+
+	/* The MD5 & SHA256 fingerprints of the legit server's host keys, as
+	 * well as the fingerprints for our host keys. */
+	char *legit_md5_fingerprint;
+	unsigned int legit_md5_fingerprint_len;
+	char *legit_sha256_fingerprint;
+	unsigned int legit_sha256_fingerprint_len;
+	char *our_md5_fingerprint;
+	unsigned int our_md5_fingerprint_len;
+	char *our_sha256_fingerprint;
+	unsigned int our_sha256_fingerprint_len;
+	char *extra_fp_bytes;
+	unsigned int extra_fp_bytes_len;
 };
 
 #define CHAN_EXTENDED_IGNORE		0
@@ -214,7 +230,7 @@ Channel	*channel_by_id(int);
 Channel	*channel_by_remote_id(int);
 Channel	*channel_lookup(int);
 Channel *channel_new(char *, int, int, int, int, u_int, u_int, int, char *, int);
-void	 channel_set_fds(int, int, int, int, int, int, int, u_int);
+void	 channel_set_fds(int, int, int, int, int, int, int, u_int, int, int);
 void	 channel_free(Channel *);
 void	 channel_free_all(void);
 void	 channel_stop_listening(void);

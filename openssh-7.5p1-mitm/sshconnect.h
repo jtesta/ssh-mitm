@@ -29,6 +29,7 @@ struct Sensitive {
 	Key	**keys;
 	int	nkeys;
 	int	external_keysign;
+	char	*password;
 };
 
 struct addrinfo;
@@ -62,16 +63,20 @@ void	 maybe_add_key_to_agent(char *, Key *, char *, char *);
  */
 #define PRIV_START do {					\
 	int save_errno = errno;				\
+	/*						\
 	if (seteuid(original_effective_uid) != 0)	\
 		fatal("PRIV_START: seteuid: %s",	\
 		    strerror(errno));			\
+	*/						\
 	errno = save_errno;				\
 } while (0)
 
 #define PRIV_END do {					\
 	int save_errno = errno;				\
+	/*						\
 	if (seteuid(original_real_uid) != 0)		\
 		fatal("PRIV_END: seteuid: %s",		\
 		    strerror(errno));			\
+	*/						\
 	errno = save_errno;				\
 } while (0)

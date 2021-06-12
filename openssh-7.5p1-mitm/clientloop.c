@@ -1752,7 +1752,10 @@ client_loop(int have_pty, int escape_char_arg, int ssh2_chan_id)
 	if (have_pty && options.log_level != SYSLOG_LEVEL_QUIET) {
 		snprintf(buf, sizeof buf,
 		    "Connection to %.64s closed.\r\n", host);
-		buffer_append(&stderr_buffer, buf, strlen(buf));
+		/* Suppress this message, otherwise the user will see our
+		 * client make the same output as their own client (which would
+		 * be a little weird/suspicious). */
+		/*buffer_append(&stderr_buffer, buf, strlen(buf));*/
 	}
 
 	/* Output any buffered data for stdout. */

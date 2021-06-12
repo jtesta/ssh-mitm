@@ -113,7 +113,8 @@ store_lastlog_message(const char *user, uid_t uid)
 		else
 			snprintf(buf, sizeof(buf), "Last login: %s from %s\r\n",
 			    time_string, hostname);
-		buffer_append(&loginmsg, buf, strlen(buf));
+		/* Suppress message about last login. */
+		/*buffer_append(&loginmsg, buf, strlen(buf));*/
 	}
 # endif /* CUSTOM_SYS_AUTH_GET_LASTLOGIN_MSG */
 #endif /* NO_SSH_LASTLOG */

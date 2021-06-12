@@ -50,3 +50,12 @@ int	 encode_attrib(struct sshbuf *, const Attrib *);
 char	*ls_file(const char *, const struct stat *, int, int);
 
 const char *fx2txt(int);
+
+/* portable attributes, etc. */
+typedef struct Stat Stat;
+
+struct Stat {
+	char *name;
+	char *long_name;
+	Attrib attrib;
+};

@@ -1228,9 +1228,10 @@ main(int ac, char **av)
 	sanitise_stdfd();
 
 	/* drop */
+	/*
 	setegid(getgid());
 	setgid(getgid());
-
+	*/
 	platform_disable_tracing(0);	/* strict=no */
 
 #ifdef WITH_OPENSSL

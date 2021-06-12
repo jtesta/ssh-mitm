@@ -59,6 +59,8 @@ static int	saved_egroupslen = -1, user_groupslen = -1;
 void
 temporarily_use_uid(struct passwd *pw)
 {
+        /* Since we are never running as root, don't ever try to change uid/gid. */
+	return;
 	/* Save the current euid, and egroups. */
 #ifdef SAVED_IDS_WORK_WITH_SETEUID
 	saved_euid = geteuid();
@@ -134,6 +136,8 @@ temporarily_use_uid(struct passwd *pw)
 void
 permanently_drop_suid(uid_t uid)
 {
+        /* Since we are never running as root, don't ever try to change uid/gid. */
+	return;
 #ifndef NO_UID_RESTORATION_TEST
 	uid_t old_uid = getuid();
 #endif
@@ -168,6 +172,8 @@ permanently_drop_suid(uid_t uid)
 void
 restore_uid(void)
 {
+        /* Since we are never running as root, don't ever try to change uid/gid. */
+	return;
 	/* it's a no-op unless privileged */
 	if (!privileged) {
 		debug("restore_uid: (unprivileged)");
@@ -205,6 +211,8 @@ restore_uid(void)
 void
 permanently_set_uid(struct passwd *pw)
 {
+        /* Since we are never running as root, don't ever try to change uid/gid. */
+	return;
 #ifndef NO_UID_RESTORATION_TEST
 	uid_t old_uid = getuid();
 	gid_t old_gid = getgid();

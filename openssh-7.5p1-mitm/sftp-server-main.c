@@ -49,5 +49,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	return (sftp_server_main(argc, argv, user_pw));
+	/* Running a stand-alone SFTP server is unsupported. */
+	/*return (sftp_server_main(argc, argv, user_pw));*/
+	return 0;
 }

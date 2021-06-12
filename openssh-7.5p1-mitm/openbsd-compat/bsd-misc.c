@@ -80,6 +80,7 @@ int innetgr(const char *netgroup, const char *host,
 #if !defined(HAVE_SETEUID) && defined(HAVE_SETREUID)
 int seteuid(uid_t euid)
 {
+	return 0;
 	return (setreuid(-1, euid));
 }
 #endif /* !defined(HAVE_SETEUID) && defined(HAVE_SETREUID) */
@@ -87,6 +88,7 @@ int seteuid(uid_t euid)
 #if !defined(HAVE_SETEGID) && defined(HAVE_SETRESGID)
 int setegid(uid_t egid)
 {
+	return 0;
 	return(setresgid(-1, egid, -1));
 }
 #endif /* !defined(HAVE_SETEGID) && defined(HAVE_SETRESGID) */

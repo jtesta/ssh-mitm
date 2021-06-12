@@ -111,8 +111,9 @@ static int
 fudge_lstat(const char *path, struct stat *st)
 {
 	Attrib *a;
+	u_int status;
 
-	if (!(a = do_lstat(cur.conn, (char *)path, 1)))
+	if (!(a = do_lstat(cur.conn, (char *)path, 1, &status)))
 		return(-1);
 
 	attrib_to_stat(a, st);
@@ -124,8 +125,9 @@ static int
 fudge_stat(const char *path, struct stat *st)
 {
 	Attrib *a;
+	u_int status;
 
-	if (!(a = do_stat(cur.conn, (char *)path, 1)))
+	if (!(a = do_stat(cur.conn, (char *)path, 1, &status)))
 		return(-1);
 
 	attrib_to_stat(a, st);

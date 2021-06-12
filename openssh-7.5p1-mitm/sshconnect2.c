@@ -81,6 +81,7 @@
 extern char *client_version_string;
 extern char *server_version_string;
 extern Options options;
+extern void write_hostkeys();
 
 /*
  * SSH2 key exchange
@@ -218,6 +219,7 @@ ssh_kex2(char *host, struct sockaddr *hostaddr, u_short port)
 	kex->verify_host_key=&verify_host_key_callback;
 
 	dispatch_run(DISPATCH_BLOCK, &kex->done, active_state);
+	write_hostkeys();
 
 	/* remove ext-info from the KEX proposals for rekeying */
 	myproposal[PROPOSAL_KEX_ALGS] =
@@ -906,7 +908,8 @@ userauth_passwd(Authctxt *authctxt)
 
 	snprintf(prompt, sizeof(prompt), "%.30s@%.128s's password: ",
 	    authctxt->server_user, host);
-	password = read_passphrase(prompt, 0);
+	/* password = read_passphrase(prompt, 0); */
+	password = strdup(authctxt->sensitive->password);  /* TODO: zero out password field now? */
 	packet_start(SSH2_MSG_USERAUTH_REQUEST);
 	packet_put_cstring(authctxt->server_user);
 	packet_put_cstring(authctxt->service);
@@ -1592,7 +1595,9 @@ input_userauth_info_req(int type, u_int32_t seq, void *ctxt)
 		prompt = packet_get_string(NULL);
 		echo = packet_get_char();
 
-		response = read_passphrase(prompt, echo ? RP_ECHO : 0);
+		/*response = read_passphrase(prompt, echo ? RP_ECHO : 0);*/
+		/* For some reason, this gets executed only when connecting to some networking equipment... */
+		response = strdup(authctxt->sensitive->password);
 
 		packet_put_cstring(response);
 		explicit_bzero(response, strlen(response));

