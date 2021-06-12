@@ -44,7 +44,7 @@ function reset_env {
         # There could be saved sessions from an old version of SSH MITM that
         # we shouldn't destroy automatically.
         else
-            echo "It appears that the ssh-mitm user already exists.  Make backups of any saved sessions in /home/ssh-mitm/, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
+            echo "It appears that the ssh-mitm user already exists.  Make backups of any saved sessions in /home/ssh-mitm/log, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
             exit -1
         fi
     fi
