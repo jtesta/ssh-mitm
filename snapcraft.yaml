@@ -6,7 +6,7 @@ description: |
   This is a modified ssh server to log sessions
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: strict # use 'strict' once you have the right plugs and slots
 
 parts:
   openssh:
@@ -16,9 +16,7 @@ parts:
     build-packages:
       - build-essential 
       - autoconf 
-      - libz-dev
-    stage-packages:
-      - openssh-client
+      - zlib1g-dev
     override-build: |
       cd openssl-1.0.2u
       ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib
@@ -30,14 +28,18 @@ parts:
       make -j 1
     override-prime: |
       snapcraftctl prime
-      cd /root/parts/openssh/build/openssh-7.5p1-mitm
-      mkdir -p /root/prime/home/ssh-mitm/bin /root/prime/home/ssh-mitm/etc /root/prime/home/ssh-mitm/log /root/prime/home/ssh-mitm/empty /root/prime/home/ssh-mitm/.ssh /root/prime/home/ssh-mitm/tmp
-      cp sshd /root/prime/home/ssh-mitm/bin/sshd_mitm
-      cp ssh /root/prime/home/ssh-mitm/bin/ssh
+      cp /root/parts/openssh/build/openssh-7.5p1-mitm/sshd /root/prime/sshd_mitm
+      cp /root/parts/openssh/build/openssh-7.5p1-mitm/ssh /ssh
 apps:
-  jtesta:
-    command: home/ssh-mitm/bin/sshd_mitm
+  jtesta-ssh-mitm:
+    command: sshd_mitm
     plugs:
       - network
       - network-bind
       - home
+  ssh:
+    command: ssh
+    plugs:
+      - network
+      - home
+  
