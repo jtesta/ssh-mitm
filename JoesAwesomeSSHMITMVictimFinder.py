@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #
 # JoesAwesomeSSHMITMVictimFinder.py
-# Copyright (C) 2017-2018  Joe Testa <jtesta@positronsecurity.com>
+# Copyright (C) 2017-2021  Joe Testa <jtesta@positronsecurity.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms version 3 of the GNU General Public License as
@@ -16,8 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #
-# Version: 1.0
-# Date:    June 28, 2017
+# Version: 1.1
+# Date:    June 22, 2021
 #
 #
 # This tool ARP spoofs the LAN in small chunks and looks for existing SSH
@@ -29,7 +29,14 @@
 #
 
 # Built-in modules.
-import argparse, importlib, ipaddress, os, signal, subprocess, sys, tempfile, threading
+import argparse
+import ipaddress
+import os
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
 from time import sleep
 
 # Python3 is required.
@@ -48,7 +55,7 @@ try:
     # manually.
     if (netifaces.version.startswith('0.8')):
         old_netifaces = True
-except ImportError as e:
+except ImportError:
     print("The Python3 netaddr and/or netifaces module is not installed.  Fix with:  apt install python3-netaddr python3-netifaces")
     exit(-1)
 
@@ -107,7 +114,7 @@ def signal_handler(signum, frame):
         d('Telling ettercap to shut down gracefully...')
         try:
             ettercap_proc.communicate("q\n".encode('ascii'))
-        except ValueError as e:
+        except ValueError:
             # It is possible that the main thread already called communicate(),
             # to terminate the process, so calling it again causes an exception.
             # In this case, just wait for it to terminate.
@@ -120,7 +127,7 @@ def signal_handler(signum, frame):
             retcode = tshark_proc.wait(20)
             tshark_proc = None
             d('tshark terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('WARNING: tshark did not terminate after 20 seconds!  Sending SIGKILL...')
             pass
 
@@ -132,7 +139,7 @@ def signal_handler(signum, frame):
             retcode = tshark_proc.wait(10)
             tshark_proc = None
             d('After SIGKILL, tshark terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('ERROR: tshark did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % tshark_proc.pid)
             pass
 
@@ -142,7 +149,7 @@ def signal_handler(signum, frame):
             retcode = ettercap_proc.wait(20)
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             pass
 
     # ettercap survived more than 20 seconds after a SIGTERM, so now send it
@@ -154,7 +161,7 @@ def signal_handler(signum, frame):
             retcode = ettercap_proc.wait(10)
             ettercap_proc = None
             d('ettercap terminated with return code %d' % retcode)
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             p('ERROR: ettercap did not terminate after 10 seconds, even with SIGKILL.  Try manually killing it (process ID %d).' % ettercap_proc.pid)
             pass
 
@@ -205,7 +212,7 @@ class MenuHandler(threading.Thread):
         while not self.stop_requested:
             try:
                 c = input()[0:1].lower()
-            except ValueError as e:
+            except ValueError:
                 self.stop_requested = True
                 continue
 
@@ -281,7 +288,7 @@ def check_prereqs():
         # Output with no rules has two lines.
         if prerouting_output.count("\n") > 2:
             p("\nWARNING: it appears that you have entries in your PREROUTING NAT table.  Searching for SSH connections on the LAN with this script while PREROUTING rules are enabled may have unintended side-effects.  The output of 'iptables -t nat -nL PREROUTING' is:\n\n%s\n\n" % prerouting_output)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         p('Warning: failed to run iptables.  Continuing...')
         pass
 
@@ -293,7 +300,7 @@ def find_prog(prog_args):
         hProc = subprocess.Popen(prog_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         s, e = hProc.communicate()
         prog_found = True
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         pass
 
     return prog_found
@@ -346,7 +353,7 @@ def get_lan_devices(network, gateway, ignore_list):
 
     try:
         hNmap.wait(30)
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         p('Nmap ARP ping took longer than 30 seconds.  Terminating...')
         exit(-1)
 
@@ -553,7 +560,7 @@ if __name__ == '__main__':
     for ip in ignore_list:
         try:
             ipaddress.ip_address(ip)
-        except ValueError as e:
+        except ValueError:
             p('Error: %s is not a valid IP address.' % ip)
             exit(-1)
 
@@ -561,7 +568,7 @@ if __name__ == '__main__':
     addresses = None
     try:
         addresses = netifaces.ifaddresses(interface)
-    except ValueError as e:
+    except ValueError:
         p('Error parsing interface: %s' % str(e))
         exit(-1)
 
