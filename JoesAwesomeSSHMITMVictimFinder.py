@@ -340,7 +340,7 @@ def enable_ip_forwarding(flag):
     if current_ipv4_setting != flag:
         raise RuntimeError('Failed to set IP forwarding setting!: %r %r' % (current_ipv4_setting, flag))
 
-    return old_ipv4_setting == False
+    return old_ipv4_setting is False
 
 
 # Runs nmap to get the devices on the LAN that are alive (using ARP pings).
@@ -368,7 +368,7 @@ def get_lan_devices(network, gateway, ignore_list):
     for line in nmap_output:
         tokens = line.split()
         if tokens[0] == 'Host:':
-           ret.append(tokens[1])
+            ret.append(tokens[1])
 
     # Remove the gateway from the list of live devices.
     if gateway in ret:
@@ -404,7 +404,7 @@ def blocketize_devices(devices, block_size):
         device_block.append(device)
         i += 1
 
-        if (i >= block_size) or (devices.index(device) == (len(devices) - 1)) :
+        if (i >= block_size) or (devices.index(device) == (len(devices) - 1)):
             i = 0
             device_blocks.append(device_block)
             device_block = []
@@ -460,49 +460,49 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
     # Each line is in the following format:
     # 10.x.x.x\t174.x.x.x\t38564,22
     for line in lines:
-       if line == '':
-           continue
+        if line == '':
+            continue
 
-       fields = line.split("\t")
-       ip1 = fields[0]
-       ip2 = fields[1]
+        fields = line.split("\t")
+        ip1 = fields[0]
+        ip2 = fields[1]
 
-       ports = fields[2].split(',')
-       port1 = ports[0]
-       port2 = ports[1]
+        ports = fields[2].split(',')
+        port1 = ports[0]
+        port2 = ports[1]
 
-       local_client = None
-       local_server = None
-       remote_client = None
-       remote_server = None
-       if (ip1 in device_block) and (port2 == '22'):
-           local_client = ip1
-           remote_server = ip2
-       elif (ip2 in device_block) and (port1 == '22'):
-           local_client = ip2
-           remote_server = ip1
-       elif (ip1 in device_block) and (port1 == '22'):
-           local_server = ip1
-           remote_client = ip2
-       elif (ip2 in device_block) and (port2 == '22'):
-           local_server = ip2
-           remote_client = ip1
-       else:
-           p('Strange tshark output found: [%s]' % line)
-           p("\tdevice block: [%s]" % ",".join(device_block))
-           continue
+        local_client = None
+        local_server = None
+        remote_client = None
+        remote_server = None
+        if (ip1 in device_block) and (port2 == '22'):
+            local_client = ip1
+            remote_server = ip2
+        elif (ip2 in device_block) and (port1 == '22'):
+            local_client = ip2
+            remote_server = ip1
+        elif (ip1 in device_block) and (port1 == '22'):
+            local_server = ip1
+            remote_client = ip2
+        elif (ip2 in device_block) and (port2 == '22'):
+            local_server = ip2
+            remote_client = ip1
+        else:
+            p('Strange tshark output found: [%s]' % line)
+            p("\tdevice block: [%s]" % ",".join(device_block))
+            continue
 
-       # Look for outgoing connections.
-       if (local_client is not None) and (remote_server is not None):
-           tup = (local_client, remote_server)
-           if tup not in local_clients:
-               local_clients.append(tup)
-       # Look for incoming connections (implying a server is running on the
-       # LAN).
-       elif (local_server is not None) and (remote_client is not None):
-           tup = (local_server, remote_client)
-           if tup not in local_servers:
-               local_servers.append(tup)
+        # Look for outgoing connections.
+        if (local_client is not None) and (remote_server is not None):
+            tup = (local_client, remote_server)
+            if tup not in local_clients:
+                local_clients.append(tup)
+        # Look for incoming connections (implying a server is running on the
+        # LAN).
+        elif (local_server is not None) and (remote_client is not None):
+            tup = (local_server, remote_client)
+            if tup not in local_servers:
+                local_servers.append(tup)
 
     if len(local_clients) == 0 and len(local_servers) == 0:
        v('No SSH connections found.')
