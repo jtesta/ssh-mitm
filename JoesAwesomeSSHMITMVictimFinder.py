@@ -48,7 +48,8 @@ if sys.version_info.major < 3:
 # a useful message to the user with how to install them.
 old_netifaces = False
 try:
-    import netaddr, netifaces
+    import netaddr
+    import netifaces
 
     # Check if we're using an old version of netifaces (used in Ubuntu 14 and
     # Linux Mint 17).  If so, the user will need to specify the gateway
@@ -170,7 +171,6 @@ def signal_handler(signum, frame):
     if forwarding_was_off is True:
         v('IP forwarding was off before.  Disabling it now...')
         enable_ip_forwarding(False)
-
 
     # Print all the IPs found.
     print_discovered()
