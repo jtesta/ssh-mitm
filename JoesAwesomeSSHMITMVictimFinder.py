@@ -250,7 +250,6 @@ class MenuHandler(threading.Thread):
 
         d("Menu thread exiting.")
 
-
     def stop(self):
         self.stop_requested = True
 
