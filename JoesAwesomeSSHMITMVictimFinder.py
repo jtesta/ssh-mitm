@@ -505,21 +505,21 @@ def arp_spoof_and_monitor(interface, local_addresses, gateway, device_block, lis
                 local_servers.append(tup)
 
     if len(local_clients) == 0 and len(local_servers) == 0:
-       v('No SSH connections found.')
+        v('No SSH connections found.')
 
     if len(local_clients) > 0:
-       p("\nLocal clients:")
-       for tup in local_clients:
-           p('  * %s -> %s:22' % (tup[0], tup[1]))
-       p()
-       total_local_clients.extend(x for x in local_clients if x not in total_local_clients)
+        p("\nLocal clients:")
+        for tup in local_clients:
+            p('  * %s -> %s:22' % (tup[0], tup[1]))
+        p()
+        total_local_clients.extend(x for x in local_clients if x not in total_local_clients)
 
     if len(local_servers) > 0:
-       p("\nLocal servers:")
-       for tup in local_servers:
-           p('  * %s -> %s:22' % (tup[1], tup[0]))
-       p()
-       total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
+        p("\nLocal servers:")
+        for tup in local_servers:
+            p('  * %s -> %s:22' % (tup[1], tup[0]))
+        p()
+        total_local_servers.extend(x for x in local_servers if x not in total_local_servers)
 
 
 if __name__ == '__main__':
@@ -541,7 +541,6 @@ if __name__ == '__main__':
         required.add_argument('--gateway', help='the network gateway', required=True)
 
     args = vars(parser.parse_args())
-
 
     # The network interface to use.
     interface = args['interface']
@@ -568,7 +567,7 @@ if __name__ == '__main__':
     addresses = None
     try:
         addresses = netifaces.ifaddresses(interface)
-    except ValueError:
+    except ValueError as e:
         p('Error parsing interface: %s' % str(e))
         exit(-1)
 
