@@ -1618,7 +1618,7 @@ monitor_apply_keystate(struct monitor *pmonitor)
 void
 monitor_apply_lol(struct monitor *pmonitor, Lol *lol)
 {
-  u_int32_t original_port = 0;
+  u_int32_t original_port = 0, authkey_used = 0;
   size_t username_len = 0, password_len = 0;
   u_char *username = NULL, *password = NULL;
 
@@ -1629,11 +1629,13 @@ monitor_apply_lol(struct monitor *pmonitor, Lol *lol)
     fatal("%s: child_lol is NULL!", __func__);
 
   if (sshbuf_get_u32(child_lol, &original_port) != 0 ||
+      sshbuf_get_u32(child_lol, &authkey_used) != 0 ||
       sshbuf_get_string(child_lol, &username, &username_len) != 0 ||
       sshbuf_get_string(child_lol, &password, &password_len) != 0)
     fatal("%s: sshbuf problems.", __func__);
 
   lol->original_port = (unsigned short)original_port;
+  lol->authkey_used = (unsigned short)authkey_used;
   lol->username = username;
   lol->password = password;
   sshbuf_free(child_lol); child_lol = NULL;

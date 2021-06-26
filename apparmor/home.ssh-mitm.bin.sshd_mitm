@@ -45,6 +45,9 @@
   /home/ssh-mitm/bin/sshd_mitm ix,
   /home/ssh-mitm/bin/ssh px,
 
+  # sshd_mitm also execs /usr/bin/docker for MITMing pubkey authentication.
+  /usr/bin/docker Ux,
+
   # Allow empty/ to be read, along with the host keys & config from etc/.
   /home/ssh-mitm/empty/ r,
   /home/ssh-mitm/etc/* r,

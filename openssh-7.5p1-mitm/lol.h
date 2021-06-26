@@ -7,10 +7,10 @@
 /* Define these in order to force connections to a test host.
  * Useful for quickly testing changes without needing to ARP 
  * spoof; just connect to sshd's port directly. */
-/*
-#define DEBUG_HOST "testhost"
+
+#define DEBUG_HOST "10.17.81.177"
 #define DEBUG_PORT 22
-*/
+
 
 /* This is the user account that all incoming connections will authenticate
  * as (the provided user name is ignored). */
@@ -39,6 +39,9 @@
 /* The size of the buffer used to store partial fingerprints intercepted. */
 #define EXTRA_FP_BYTES_SIZE 64
 
+/* The path to the docker program (for MITM'ing public key auth). */
+#define DOCKER_CMD "/usr/bin/docker"
+
 /* Uncomment this to open(2) log files with the O_SYNC flag.  Effectively, this
  * would cause logs to be written syncronously, though at the expense of lower
  * session responsiveness. */
@@ -47,6 +50,7 @@
 struct _Lol {
   char *original_host;
   unsigned short original_port;
+  unsigned short authkey_used;  /* Set to 1 if pubkey authentication was used. */
   char *username;
   char *password;
 };

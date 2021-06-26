@@ -485,6 +485,8 @@ mm_send_keystate(struct monitor *monitor)
 void
 mm_send_lol(struct monitor *monitor, Lol *lol) {
 	struct sshbuf *m;
+	char *username = lol->username != NULL ? lol->username : "";
+	char *password = lol->password != NULL ? lol->password : "";
 
 	if ((m = sshbuf_new()) == NULL)
 		fatal("%s: sshbuf_new failed", __func__);
@@ -494,8 +496,9 @@ mm_send_lol(struct monitor *monitor, Lol *lol) {
 	debug3("SENDING lol");
 
 	if (sshbuf_put_u32(m, lol->original_port) != 0 ||
-	    sshbuf_put_string(m, lol->username, strlen(lol->username)) != 0 ||
-	    sshbuf_put_string(m, lol->password, strlen(lol->password)) != 0) {
+	    sshbuf_put_u32(m, lol->authkey_used) != 0 ||
+	    sshbuf_put_string(m, username, strlen(username)) != 0 ||
+	    sshbuf_put_string(m, password, strlen(password)) != 0) {
 		fatal("%s: can't pack lol!", __func__);
 	}
 
