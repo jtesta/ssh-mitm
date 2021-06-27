@@ -30,8 +30,10 @@ CLR="\033[0m"
 RED="\033[0;31m"
 YELLOW="\033[0;33m"
 GREEN="\033[0;32m"
-REDB="\033[1;31m"   # Red + bold
-GREENB="\033[1;32m" # Green + bold
+REDB="\033[1;31m"    # Red + bold
+YELLOWB="\033[1;33m" # Yellow + bold
+GREENB="\033[1;32m"  # Green + bold
+WHITEB="\033[1;37m"  # White + bold
 
 
 # Resets the environment (in case this script was run once before).
@@ -47,7 +49,7 @@ function reset_env {
 	# The user exists.  If this script was run with the "--force" argument,
         # then we will delete the user.
         if [[ $1 == '--force' ]]; then
-	    echo -e "\n${YELLOW}--force flag used; deleting ssh-mitm user...\n${CLR}"
+	    echo -e "\n${YELLOWB}Flag '--force' used; deleting ssh-mitm user...\n${CLR}"
             userdel -f -r ssh-mitm 2> /dev/null
 
         # There could be saved sessions from an old version of SSH MITM that
@@ -61,7 +63,7 @@ function reset_env {
 		chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/.docker
 	    fi
 
-            echo -e "${YELLOW}It appears that the ssh-mitm user already exists.${CLR}  Make backups of any saved sessions in /home/ssh-mitm/log, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
+            echo -e "${YELLOWB}It appears that the ssh-mitm user already exists.${CLR}  Make backups of any saved sessions in /home/ssh-mitm/log, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
             exit -1
         fi
     fi
@@ -72,7 +74,7 @@ function reset_env {
 
 # Installs rootless Docker.
 function install_rootless_docker {
-    echo -e "\nInstalling ${YELLOW}EXPERIMENTAL${CLR} Docker environment for public key authentication MITM'ing...\n"
+    echo -e "\n${WHITEB}Installing ${YELLOWB}EXPERIMENTAL${WHITEB} Docker environment for public key authentication MITM'ing...${CLR}\n"
 
     # If the rootless script isn't installed, then add the Docker repository to apt and install it.
     if [[ ! -f /usr/bin/dockerd-rootless.sh ]]; then
@@ -87,7 +89,7 @@ function install_rootless_docker {
 
 	echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-	echo -e "\nInstalling Docker package from Docker's repo...\n"
+	echo -e "\n${WHITEB}Installing Docker packages from Docker's repo...${CLR}\n"
 	apt update
 	apt install -y docker-ce docker-ce-cli containerd.io
 
@@ -97,14 +99,14 @@ function install_rootless_docker {
 	fi
     fi
 
-    echo -e "\nRunning /usr/bin/dockerd-rootless-setuptool.sh...\n"
+    echo -e "\n${WHITEB}Running /usr/bin/dockerd-rootless-setuptool.sh...${CLR}\n"
     su - ssh-mitm -c "/usr/bin/dockerd-rootless-setuptool.sh install"
 
     touch /home/ssh-mitm/.bashrc
     echo "export XDG_RUNTIME_DIR=/home/ssh-mitm/.docker/run" >> /home/ssh-mitm/.profile
     echo "export DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock" >> /home/ssh-mitm/.profile
 
-    echo -e "\nBuilding ssh-mitm-fake-env image..\n"
+    echo -e "\n${WHITEB}Building ssh-mitm-fake-env image...${CLR}\n"
     su - ssh-mitm -c "/usr/bin/dockerd-rootless.sh 2>&1 >> ~/.docker/dockerd.log" &
 
     # Wait up to 10 seconds for Docker daemon to start (i.e. its socket to open).
@@ -131,14 +133,14 @@ function install_rootless_docker {
     # Clean up its intermediate staging images.
     su - ssh-mitm -c "docker system prune --force; docker image rm ubuntu:20.04"
 
-    echo -e "\nDone installing rootless Docker.\n"
+    echo -e "\n${WHITEB}Done installing rootless Docker.${CLR}\n"
     return 1
 }
 
 
 # Installs prerequisites.
 function install_prereqs {
-    echo -e "Installing prerequisites...\n"
+    echo -e "${WHITEB}Installing prerequisites...${CLR}\n"
 
     declare -a packages need_openssl_sources
     packages=(autoconf build-essential zlib1g-dev)
@@ -162,7 +164,7 @@ function install_prereqs {
        need_openssl_sources=1
     fi
 
-    echo -e "Installing packages: ${packages[@]}"
+    echo -e "${WHITEB}Installing packages: ${packages[@]}${CLR}"
     apt install -y ${packages[@]}
     if [[ $? != 0 ]]; then
         echo -e "${REDB}Failed to install prerequisites.${CLR}  Failed: apt install -y ${packages[@]}"
@@ -170,7 +172,7 @@ function install_prereqs {
     fi
 
     # Compile OpenSSL v1.0.2u from sources.
-    echo -e "\nCompiling OpenSSL 1.0.2u..."
+    echo -e "\n${WHITEB}Compiling OpenSSL 1.0.2u...${CLR}"
     pushd $openssl_source_dir > /dev/null
     make clean
     ./config -v -fstack-protector-all -D_FORTIFY_SOURCE=2 -fPIC no-shared enable-weak-ssl-ciphers zlib
@@ -192,10 +194,10 @@ function install_prereqs {
 function compile_openssh {
     pushd $openssh_source_dir > /dev/null
 
-    echo -e "Running autoconf in openssh-7.5p1-mitm/...\n"
+    echo -e "${WHITEB}Running autoconf in openssh-7.5p1-mitm/...${CLR}\n"
     autoconf
 
-    echo -e "\nDone.  Compiling modified OpenSSH sources...\n"
+    echo -e "\n${WHITEB}Done.  Compiling modified OpenSSH sources...${CLR}\n"
     ./configure --with-sandbox=no --with-privsep-user=ssh-mitm --with-privsep-path=/home/ssh-mitm/empty --with-pid-dir=/home/ssh-mitm --with-lastlog=/home/ssh-mitm --with-ssl-dir=../$openssl_source_dir
     make clean
     make -j $NUM_PROCS
@@ -213,7 +215,7 @@ function compile_openssh {
 
 # Creates the ssh-mitm user account, and sets up its environment.
 function setup_environment {
-    echo -e "\nCreating ssh-mitm user, and setting up its environment...\n"
+    echo -e "\n${WHITEB}Creating ssh-mitm user, and setting up its environment...${CLR}\n"
 
     # Create the ssh-mitm user and set its home directory to mode 0700.  Create
     # "bin" and "etc" subdirectories to hold the executables and config file,
@@ -293,32 +295,32 @@ EOF
 
             # Is Kali installed, or is it a Live CD boot?
             if [[ -f /etc/default/grub ]]; then  # Its installed.
-                echo -e -n "\nKali Linux detected with no AppArmor installed.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Would you like to automatically enable AppArmor? (y/n) "
+                echo -e -n "\n${YELLOWB}Kali Linux detected with no AppArmor installed.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Would you like to automatically enable AppArmor? (y/n) "
                 read -n 1 install_apparmor
                 echo -e "\n"
 
                 # If the user chose to install AppArmor...
                 if [[ ($install_apparmor == 'y') || ($install_apparmor == 'Y') ]]; then
-                    echo -e "Getting apparmor from repository...\n"
+                    echo -e "${WHITEB}Getting apparmor from repository...${CLR}\n"
                     apt -y install apparmor
 
-                    echo -e "\nEnabling AppArmor on startup...\n"
+                    echo -e "\n${WHITEB}Enabling AppArmor on startup...${CLR}\n"
                     update-rc.d apparmor enable
 
-                    echo -e "\nUpdating bootloader...\n"
+                    echo -e "\n${WHITEB}Updating bootloader...${CLR}\n"
                     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/GRUB_CMDLINE_LINUX_DEFAULT="quiet apparmor=1 security=apparmor"/' /etc/default/grub
                     update-grub2
 
-                    echo -e "\nFinished installing AppArmor.  Reboot to enable it.\n"
+                    echo -e "\n${WHITEB}Finished installing AppArmor.  Reboot to enable it.${CLR}\n"
                 else  # User declined to install AppArmor.
-                    echo -e "\nAppArmor will not be automatically installed."
+                    echo -e "\n${YELLOWB}AppArmor will not be automatically installed.${CLR}"
                 fi
             else  # Kali Live CD boot.
-                echo -e "\n\n\t${YELLOW}!!! WARNING !!!:${CLR} AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
+                echo -e "\n\n\t${YELLOWB}!!! WARNING !!!:${CLR} AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
             fi
 
         else  # This is not Kali Linux.
-            echo -e "\n\n\t${YELLOW}!!! WARNING !!!:${CLR} AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
+            echo -e "\n\n\t${YELLOWB}!!! WARNING !!!:${CLR} AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
         fi
     fi
 }
@@ -351,5 +353,5 @@ reset_env $force_flag
 compile_openssh
 setup_environment $install_type
 
-echo -e "\n\n${GREENB}Done!${CLR}  The next step is to use JoesAwesomeSSHMITMVictimFinder.py to find target IPs, then execute start.sh and ARP spoof.\n\n"
+echo -e "\n\n${GREENB}Done!${WHITEB}  The next step is to use JoesAwesomeSSHMITMVictimFinder.py to find target IPs, then execute start.sh and ARP spoof.${CLR}\n\n"
 exit 0
