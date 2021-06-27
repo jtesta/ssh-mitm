@@ -19,11 +19,19 @@ openssh_source_dir='openssh-7.5p1-mitm'
 openssl_source_dir='openssl-1.0.2u'
 
 # Find the total number of CPU cores on this machine.
-NUM_PROCS=1
+NUM_PROCS=4
 if [[ -x /usr/bin/nproc ]]; then
     NUM_PROCS=`/usr/bin/nproc --all`
 fi
 echo "Detected ${NUM_PROCS} CPU cores."
+
+# Terminal colors.
+CLR="\033[0m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
+GREEN="\033[0;32m"
+REDB="\033[1;31m"   # Red + bold
+GREENB="\033[1;32m" # Green + bold
 
 
 # Resets the environment (in case this script was run once before).
@@ -39,16 +47,69 @@ function reset_env {
 	# The user exists.  If this script was run with the "--force" argument,
         # then we will delete the user.
         if [[ $1 == '--force' ]]; then
+	    echo -e "\n${YELLOW}--force flag used; deleting ssh-mitm user...\n${CLR}"
             userdel -f -r ssh-mitm 2> /dev/null
 
         # There could be saved sessions from an old version of SSH MITM that
         # we shouldn't destroy automatically.
         else
-            echo "It appears that the ssh-mitm user already exists.  Make backups of any saved sessions in /home/ssh-mitm/log, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
+
+	    # If Docker was previously configured, remove its config dir and re-create it.
+	    if [[ -d /home/ssh-mitm/.docker ]]; then
+		rm -rf /home/ssh-mitm/.docker
+		mkdir -m 0700 -p /home/ssh-mitm/.docker/run
+		chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/.docker
+	    fi
+
+            echo -e "${YELLOW}It appears that the ssh-mitm user already exists.${CLR}  Make backups of any saved sessions in /home/ssh-mitm/log, then re-run this script with the \"--force\" argument (this will cause the user account to be deleted and re-created)."
             exit -1
         fi
     fi
 
+    return 1
+}
+
+
+# Installs rootless Docker.
+function install_rootless_docker {
+    echo -e "\nInstalling ${YELLOW}EXPERIMENTAL${CLR} Docker environment for public key authentication MITM'ing...\n"
+
+    # If the rootless script isn't installed, then add the Docker repository to apt and install it.
+    if [[ ! -f /usr/bin/dockerd-rootless.sh ]]; then
+
+	# Prerequisites taken from: https://docs.docker.com/engine/install/ubuntu/
+	apt update
+	apt install -y apt-transport-https ca-certificates curl gnupg lsb-release uidmap
+
+	# Download and install the GPG key for Docker package signing.
+	# Docker doesn't easily provide the key hash.  Tsk, tsk!
+	wget -O - https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+	echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+	echo -e "\nInstalling Docker package from Docker's repo...\n"
+	apt update
+	apt install -y docker-ce docker-ce-cli containerd.io
+
+	if [[ (! -f /usr/bin/dockerd-rootless-setuptool.sh) || (! -f /usr/bin/dockerd-rootless.sh) ]]; then
+	    echo -e "${REDB}Failed to install Docker.${CLR}"
+	    exit -1
+	fi
+    fi
+
+    echo -e "\nRunning /usr/bin/dockerd-rootless-setuptool.sh...\n"
+    su - ssh-mitm -c "/usr/bin/dockerd-rootless-setuptool.sh install"
+
+    touch /home/ssh-mitm/.bashrc
+    echo "export XDG_RUNTIME_DIR=/home/ssh-mitm/.docker/run" >> /home/ssh-mitm/.profile
+    echo "export DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock" >> /home/ssh-mitm/.profile
+
+    echo -e "\nPulling ubuntu:focal image...\n"
+    su - ssh-mitm -c "/usr/bin/dockerd-rootless.sh 2>&1 >> ~/.docker/dockerd.log" &
+    sleep 3
+    su - ssh-mitm -c "docker pull ubuntu:focal && docker tag ubuntu:focal ssh-mitm-fake-env:latest"
+
+    echo -e "\nDone installing rootless Docker.\n"
     return 1
 }
 
@@ -82,7 +143,7 @@ function install_prereqs {
     echo -e "Installing packages: ${packages[@]}"
     apt install -y ${packages[@]}
     if [[ $? != 0 ]]; then
-        echo -e "Failed to install prerequisites.  Failed: apt install -y ${packages[@]}"
+        echo -e "${REDB}Failed to install prerequisites.${CLR}  Failed: apt install -y ${packages[@]}"
         exit -1
     fi
 
@@ -96,11 +157,11 @@ function install_prereqs {
     popd > /dev/null
 
     if [[ (! -f $openssl_source_dir/libssl.a) || (! -f $openssl_source_dir/libcrypto.a) ]]; then
-        echo "\nFailed to build libssl.a and/or libcrypto.a in ${openssl_source_dir} directory!"
+        echo -e "\n${REDB}Failed to build libssl.a and/or libcrypto.a in ${openssl_source_dir} directory!${CLR}"
         exit -1
     fi
 
-    echo -e "\nSuccessfully built OpenSSL 1.0.2u from sources.\n"
+    echo -e "\n${GREENB}Successfully built OpenSSL 1.0.2u from sources.${CLR}\n"
     return 1
 }
 
@@ -120,11 +181,11 @@ function compile_openssh {
 
     # Ensure that sshd and ssh were built.
     if [[ (! -f $openssh_source_dir/sshd) || (! -f $openssh_source_dir/ssh) ]]; then
-        echo -e "\nFailed to build ssh and/or sshd.  Terminating."
+        echo -e "\n${REDB}Failed to build ssh and/or sshd.  Terminating.${CLR}"
         exit -1
     fi
 
-    echo -e "\nSuccessfully built SSH MITM!\n"
+    echo -e "\n${GREENB}Successfully built SSH MITM!${CLR}\n"
 }
 
 
@@ -138,7 +199,7 @@ function setup_environment {
     useradd -m -s /bin/bash ssh-mitm
     chmod 0700 ~ssh-mitm
     mkdir -m 0755 ~ssh-mitm/{bin,etc,log}
-    mkdir -m 0700 ~ssh-mitm/tmp
+    mkdir -m 0700 -p ~ssh-mitm/{tmp,.docker/run}
     chown ssh-mitm:ssh-mitm ~ssh-mitm/{tmp,log}
 
     # Strip the debugging symbols out of the executables.
@@ -167,8 +228,8 @@ function setup_environment {
     # to not be created properly at run-time...).
     mkdir -m 0700 ~ssh-mitm/empty ~ssh-mitm/.ssh
 
-    # Set ownership on the "empty" directory and SSH host keys.
-    chown ssh-mitm:ssh-mitm /home/ssh-mitm/empty /home/ssh-mitm/.ssh /home/ssh-mitm/etc/ssh_host_*key*
+    # Set ownership on some (but not all) paths.
+    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/{empty,.ssh,.docker} /home/ssh-mitm/etc/ssh_host_*key* /home/ssh-mitm
 
     # Create the "run.sh" script, then set its permissions.
     cat > ~ssh-mitm/run.sh <<EOF
@@ -183,6 +244,11 @@ else
 fi
 EOF
     chmod 0755 ~ssh-mitm/run.sh
+
+    # If the experimental installation was enabled, install rootless Docker.
+    if [[ $1 == "experimental" ]]; then
+	install_rootless_docker
+    fi
 
     # Install the AppArmor profiles.
     if [[ ! -d /etc/apparmor.d ]]; then
@@ -226,25 +292,42 @@ EOF
                     echo -e "\nAppArmor will not be automatically installed."
                 fi
             else  # Kali Live CD boot.
-                echo -e "\n\n\t!!! WARNING !!!: AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
+                echo -e "\n\n\t${YELLOW}!!! WARNING !!!:${CLR} AppArmor is not available on Kali Live instances.  For added safety, it is highly recommended (though not required) that sshd_mitm is run in a restricted environment.  Installing Kali to a disk would allow AppArmor to be enabled.\n"
             fi
 
         else  # This is not Kali Linux.
-            echo -e "\n\n\t!!! WARNING !!!: AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
+            echo -e "\n\n\t${YELLOW}!!! WARNING !!!:${CLR} AppArmor is not installed.  It is highly recommended (though not required) that sshd_mitm is run in a restricted environment.\n\n\tInstall AppArmor with: \"apt install apparmor\".\n"
         fi
     fi
 }
 
 
 if [[ `id -u` != 0 ]]; then
-    echo "Error: this script must be run as root."
+    echo -e "${REDB}Error: this script must be run as root.${CLR}"
     exit -1
 fi
 
-install_prereqs
-reset_env $1
-compile_openssh
-setup_environment
+if [[ ($# < 1) || ($# > 2) ||
+      (($1 != "default") && ($1 != "experimental")) ||
+      (($# == 2) && ($2 != "--force")) ]]; then
+    echo "Usage: $0 [default|experimental] [--force]"
+    echo
+    echo "  default:       installs default production system"
+    echo "  experimental:  installs experimental features (i.e.: rootless Docker support"
+    echo "                     for public key authentication MITM'ing)"
+    echo
+    echo "  --force:       forces re-installation over an existing install"
+    echo
+    exit -1
+fi
 
-echo -e "\n\nDone!  The next step is to use JoesAwesomeSSHMITMVictimFinder.py to find target IPs, then execute start.sh and ARP spoof.\n\n"
+install_type=$1
+force_flag=$2
+
+install_prereqs
+reset_env $force_flag
+compile_openssh
+setup_environment $install_type
+
+echo -e "\n\n${GREENB}Done!${CLR}  The next step is to use JoesAwesomeSSHMITMVictimFinder.py to find target IPs, then execute start.sh and ARP spoof.\n\n"
 exit 0
