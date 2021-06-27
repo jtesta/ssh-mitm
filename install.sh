@@ -104,10 +104,32 @@ function install_rootless_docker {
     echo "export XDG_RUNTIME_DIR=/home/ssh-mitm/.docker/run" >> /home/ssh-mitm/.profile
     echo "export DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock" >> /home/ssh-mitm/.profile
 
-    echo -e "\nPulling ubuntu:focal image...\n"
+    echo -e "\nBuilding ssh-mitm-fake-env image..\n"
     su - ssh-mitm -c "/usr/bin/dockerd-rootless.sh 2>&1 >> ~/.docker/dockerd.log" &
-    sleep 3
-    su - ssh-mitm -c "docker pull ubuntu:focal && docker tag ubuntu:focal ssh-mitm-fake-env:latest"
+
+    # Wait up to 10 seconds for Docker daemon to start (i.e. its socket to open).
+    for i in {1..10}; do
+       sleep 1
+       if [[ -S /home/ssh-mitm/.docker/run/docker.sock ]]; then
+           break
+       fi
+    done
+
+    if [[ $i -ge 10 ]]; then
+       echo -e "${REDB}Failed to start rootless Docker daemon!${CLR}"
+       exit -1
+    fi
+
+    # Put Dockerfile in its own build directory.
+    mkdir -m 0700 /home/ssh-mitm/build_fake_env
+    cp Dockerfile.fake_env /home/ssh-mitm/build_fake_env
+    chown -R ssh-mitm:ssh-mitm /home/ssh-mitm/build_fake_env
+
+    # Now build the image.
+    su - ssh-mitm -c "cd build_fake_env; docker build -f Dockerfile.fake_env -t ssh-mitm-fake-env:latest ."
+
+    # Clean up its intermediate staging images.
+    su - ssh-mitm -c "docker system prune --force; docker image rm ubuntu:20.04"
 
     echo -e "\nDone installing rootless Docker.\n"
     return 1

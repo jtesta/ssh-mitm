@@ -1,0 +1,13 @@
+#
+# This Dockerfile is built inside the rootless Docker environment as the ssh-mitm user.
+#
+
+
+# We need the sftp-server executable, so install that into a staging container.
+FROM ubuntu:20.04 as builder
+RUN apt update -qq && apt install -y -q openssh-server
+
+# Copy sftp-server and its library dependency over to our final image.
+FROM ubuntu:20.04
+COPY --from=builder /lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/x86_64-linux-gnu/libcrypto.so.1.1
+COPY --from=builder /usr/lib/openssh/sftp-server /usr/lib/openssh/sftp-server
