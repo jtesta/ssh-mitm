@@ -167,6 +167,7 @@ struct Channel {
 
 	int log_fd;		/* File handle for logging sessions. */
 	int is_sftp;            /* Set to 1 if this is an SFTP channel. */
+	u_int authkey_used;       /* Set to 1 if key authentication was used. */
 
 	/* The MD5 & SHA256 fingerprints of the legit server's host keys, as
 	 * well as the fingerprints for our host keys. */
@@ -230,7 +231,7 @@ Channel	*channel_by_id(int);
 Channel	*channel_by_remote_id(int);
 Channel	*channel_lookup(int);
 Channel *channel_new(char *, int, int, int, int, u_int, u_int, int, char *, int);
-void	 channel_set_fds(int, int, int, int, int, int, int, u_int, int, int);
+void	 channel_set_fds(int, int, int, int, int, int, int, u_int, int, int, u_int);
 void	 channel_free(Channel *);
 void	 channel_free_all(void);
 void	 channel_stop_listening(void);
