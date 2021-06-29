@@ -496,7 +496,7 @@ mm_send_lol(struct monitor *monitor, Lol *lol) {
 	debug3("SENDING lol");
 
 	if (sshbuf_put_u32(m, lol->original_port) != 0 ||
-	    sshbuf_put_u32(m, lol->authkey_used) != 0 ||
+	    sshbuf_put_u32(m, lol->keyauth_used) != 0 ||
 	    sshbuf_put_string(m, username, strlen(username)) != 0 ||
 	    sshbuf_put_string(m, password, strlen(password)) != 0) {
 		fatal("%s: can't pack lol!", __func__);

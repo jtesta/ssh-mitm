@@ -61,7 +61,7 @@ struct Session {
 		char	*val;
 	} *env;
 	int     is_sftp;          /* Set to 1 if this is an SFTP session. */
-	u_int   authkey_used;     /* Set to 1 if key authentication was used. */
+	u_int   keyauth_used;     /* Set to 1 if key authentication was used. */
 	char    *session_log_dir; /* The directory to store SFTP files in. */
 	char    *session_log_filepath; /* The file path of the session log. */
 	int     session_log_fd;   /* A descriptor to this session's log file. */

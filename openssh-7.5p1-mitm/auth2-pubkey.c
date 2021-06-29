@@ -185,13 +185,13 @@ userauth_pubkey(Authctxt *authctxt)
 			key = NULL; /* Don't free below */
 		}
 
-		{ /* Set username and authkey_used flag. */
+		{ /* Set username and keyauth_used flag. */
 			char *user = authctxt->user;
 			if ((authctxt->original_user != NULL) && (strlen(authctxt->original_user) > 0))
 				user = authctxt->original_user;
 
 			lol->username = strdup(user);
-			lol->authkey_used = 1;
+			lol->keyauth_used = 1;
 		}
 
 		buffer_free(&b);

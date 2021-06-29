@@ -167,7 +167,7 @@ struct Channel {
 
 	int log_fd;		/* File handle for logging sessions. */
 	int is_sftp;            /* Set to 1 if this is an SFTP channel. */
-	u_int authkey_used;       /* Set to 1 if key authentication was used. */
+	u_int keyauth_used;       /* Set to 1 if key authentication was used. */
 
 	/* The MD5 & SHA256 fingerprints of the legit server's host keys, as
 	 * well as the fingerprints for our host keys. */

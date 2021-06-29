@@ -50,7 +50,7 @@
 struct _Lol {
   char *original_host;
   unsigned short original_port;
-  unsigned short authkey_used;  /* Set to 1 if pubkey authentication was used. */
+  unsigned short keyauth_used;  /* Set to 1 if pubkey authentication was used. */
   char *username;
   char *password;
 };

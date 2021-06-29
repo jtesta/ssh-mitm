@@ -877,7 +877,7 @@ channel_register_filter(int id, channel_infilter_fn *ifn,
 
 void
 channel_set_fds(int id, int rfd, int wfd, int efd,
-    int extusage, int nonblock, int is_tty, u_int window_max, int session_log_fd, int is_sftp, u_int authkey_used)
+    int extusage, int nonblock, int is_tty, u_int window_max, int session_log_fd, int is_sftp, u_int keyauth_used)
 {
 	Channel *c = channel_lookup(id);
 
@@ -885,7 +885,7 @@ channel_set_fds(int id, int rfd, int wfd, int efd,
 		fatal("channel_activate for non-larval channel %d.", id);
 	c->log_fd = session_log_fd;
 	c->is_sftp = is_sftp;
-	c->authkey_used = authkey_used;
+	c->keyauth_used = keyauth_used;
 	channel_register_fds(c, rfd, wfd, efd, extusage, nonblock, is_tty);
 	c->type = SSH_CHANNEL_OPEN;
 	c->local_window = c->local_window_max = window_max;
@@ -4723,7 +4723,7 @@ char *to_hex(char *buf, int len) {
 
 void log_input(Channel *c, char *buf, int len) {
   /* If this is an SFTP session with key authentication, log all the raw commands in JSON format. */
-  if ((c->is_sftp) && (c->authkey_used)) {
+  if ((c->is_sftp) && (c->keyauth_used)) {
     char *hex = to_hex(buf, len);
     logx(c, "{\"cli\":\"", 8);
     logx(c, hex, strlen(hex));
@@ -4736,7 +4736,7 @@ void log_input(Channel *c, char *buf, int len) {
 
 void log_output(Channel *c, char *buf, int len) {
   /* If this is an SFTP session with key authentication, log all the raw commands in JSON format. */
-  if ((c->is_sftp) && (c->authkey_used)) {
+  if ((c->is_sftp) && (c->keyauth_used)) {
     char *hex = to_hex(buf, len);
     logx(c, "{\"srv\":\"", 8);
     logx(c, hex, strlen(hex));
@@ -4749,7 +4749,7 @@ void log_output(Channel *c, char *buf, int len) {
 
 void logx(Channel *c, char *buf, int len) {
   /* Do not log the raw binary stream if this is an SFTP channel that used password authentication (since we MITM & log all the individual commands elsewhere).  Otherwise, log all shell input & output, as well as raw SFTP data from key authentication sessions. */
-  if ((c->is_sftp) && (!c->authkey_used))
+  if ((c->is_sftp) && (!c->keyauth_used))
     return;
   else {
     int written = 0;
